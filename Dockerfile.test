@@ -1,0 +1,22 @@
+# Use the official Python image from the Docker Hub
+FROM python:3.11-alpine
+
+# Set the working directory
+WORKDIR /src
+
+# Copy requirements.txt and install dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+RUN pip3 install pytest
+
+
+# Copy the .env file
+COPY .env .
+
+# Copy the rest of the application code
+COPY ./src .
+
+# make a sleep for 5 seconds to wait for the database to start
+# Specify the command to run the Python script
+CMD ["pytest", "tests"]

@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: happychoices
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./db_stuff/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+      - ./db_stuff/zdata.sql:/docker-entrypoint-initdb.d/zdata.sql
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    depends_on:
+      - mysql
+    environment:
+      MYSQL_HOST: mysql
+      MYSQL_USER: root
+      MYSQL_PASSWORD: password
+      MYSQL_DATABASE: happychoices
+    # wait 5 seconds for DB to run
+
+
+volumes:
+  mysql_data:
