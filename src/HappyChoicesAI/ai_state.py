@@ -20,6 +20,24 @@ class EthicistAIState:
     best_action: str = ""
 
 
+class StateManager:
+    _instance = None
+
+    @staticmethod
+    def get_instance():
+        if StateManager._instance is None:
+            StateManager()
+        return StateManager._instance
+
+    def __init__(self):
+        if StateManager._instance is not None:
+            raise Exception("This class is a singleton!")
+        else:
+            self.state = EthicistAIState()
+            StateManager._instance = self
+
+
+
 class Database:
     def __init__(self, host: str, database: str, user: str, password: str):
         self.host = host

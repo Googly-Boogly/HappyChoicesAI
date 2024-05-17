@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
 from global_code.helpful_functions import CustomError, create_logger_error, log_it_sync
-from HappyChoicesAI.ai_state import Database, EthicistAIState, HistoricalExample
+from HappyChoicesAI.ai_state import Database, EthicistAIState, HistoricalExample, StateManager
 
 load_dotenv()
 logger = create_logger_error(
@@ -20,7 +20,7 @@ The code works, need to ensure LLM outputs are good. (not tested) (always test l
 """
 
 
-def find_historical_examples(input_dilemma: str, state: EthicistAIState):
+def find_historical_examples():
     """
     Will gather all of the relevant historical examples for the current situation and save them to the overall agent
     state
@@ -28,10 +28,11 @@ def find_historical_examples(input_dilemma: str, state: EthicistAIState):
     :param state: The state object
     :return: NA
     """
+    state = StateManager.get_instance().state
     historical_dilemmas = get_historical_examples()
     for dilemma in historical_dilemmas:
         # Use the LLM to reason about the dilemma
-        y_or_n = reason_about_dilemma(dilemma, input_dilemma)
+        y_or_n = reason_about_dilemma(dilemma)
         if y_or_n:
             state.historical_examples.append(dilemma)
 
@@ -46,14 +47,8 @@ def get_historical_examples() -> List[HistoricalExample]:
     return historical_examples
 
 
-def reason_about_dilemma(dilemma: HistoricalExample, input_dilemma: str) -> bool:
-    """
-    Will use the LLM to reason about the current dilemma and the historical dilemma to determine if they are similar
-    :param dilemma: The historical dilemma
-    :param input_dilemma: The current dilemma
-    :return: Either True or False (if the dilemmas are similar)
-    """
-    prompt_template = ChatPromptTemplate.from_template(
+def create_prompt_template():
+    return ChatPromptTemplate.from_template(
         """You are a world renowned AI ethicist. You have been tasked to determine if this historical dilemma is applicable to the current situation. 
 
 The situation is as follows: {situation}. 
@@ -62,12 +57,23 @@ The historical dilemma is as follows: {dilemma}.
 
 Do you think this dilemma is applicable? Answer either Yes or No"""
     )
+
+
+def reason_about_dilemma(dilemma: HistoricalExample) -> bool:
+    """
+    Will use the LLM to reason about the current dilemma and the historical dilemma to determine if they are similar
+    :param dilemma: The historical dilemma
+    :param input_dilemma: The current dilemma
+    :return: Either True or False (if the dilemmas are similar)
+    """
+    prompt_template = create_prompt_template()
+    input_dilemma = StateManager.get_instance().state.situation
     chain = prompt_template | llm
     output = chain.invoke({"situation": input_dilemma, "dilemma": dilemma.situation})
     log_it_sync(
         logger, custom_message=f"Output from LLM: {output.choices[0].text.strip()}"
     )
     response = output.choices[0].text.strip().lower()
-    if response == "yes" or response == "yes.":
+    if response in ["yes", "yes."]:
         return True
     return False

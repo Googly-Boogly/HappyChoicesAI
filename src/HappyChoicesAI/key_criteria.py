@@ -3,7 +3,7 @@ from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate, HumanMessagePromptTemplate
 from dotenv import load_dotenv
 import os
-from HappyChoicesAI.ai_state import HistoricalExample, EthicistAIState, Database
+from HappyChoicesAI.ai_state import HistoricalExample, EthicistAIState, Database, StateManager
 from global_code.helpful_functions import CustomError, create_logger_error, log_it_sync
 
 load_dotenv()
@@ -20,13 +20,14 @@ Sort of tested. Need to ensure the LLM outputs the correct criteria
 """
 
 
-def find_key_criteria(state: EthicistAIState):
+def find_key_criteria():
     """
     Analyzes the situation to identify key ethical criteria relevant to utilitarian ethics. Will save the criteria to the
     state object.
     :param state: The state
     :return: NA
     """
+    state = StateManager.get_instance().state
     prompt_template = ChatPromptTemplate.from_template(
         """
 You are a world renowned AI ethicist. You have been tasked to determine the key ethical criteria relevant to utilitarian ethics in the following situation: {dilemma}.

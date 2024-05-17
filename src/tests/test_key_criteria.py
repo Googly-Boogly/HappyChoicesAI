@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import patch, MagicMock
 from typing import Dict, List, Tuple
-from HappyChoicesAI.ai_state import EthicistAIState
+from HappyChoicesAI.ai_state import EthicistAIState, StateManager
 
 # Assuming the module containing the find_key_criteria function is named `module_name`
 # and the function is imported correctly.
@@ -28,13 +28,10 @@ class TestFindKeyCriteria(unittest.TestCase):
         # Mock the prompt_template | llm to return our mock chain
         mock_prompt_template.return_value.__or__.return_value = mock_chain
 
-        # Create a sample state
-        state = EthicistAIState(
-            situation="A corporation introduces an AI system designed to manage task assignments and work schedules to optimize productivity and reduce managerial costs."
-        )
-
+        state = StateManager.get_instance().state
+        state.situation = "A corporation introduces an AI system designed to manage task assignments and work schedules to optimize productivity and reduce managerial costs."
         # Call the function
-        find_key_criteria(state)
+        find_key_criteria()
 
         # Assert the criteria in the state is set correctly
         self.assertEqual(

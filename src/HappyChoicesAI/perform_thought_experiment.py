@@ -1,111 +1,131 @@
-from langchain.agents import Agent
-from langchain_core.prompts import ChatPromptTemplate
-from HappyChoicesAI.ai_state import EthicistAIState
-from dotenv import load_dotenv
+import json
 import os
-from langchain_openai import ChatOpenAI
+from typing import List
 
+from dotenv import load_dotenv
+from langchain_core.output_parsers import JsonOutputParser, SimpleJsonOutputParser
+from langchain_core.prompts import ChatPromptTemplate, PromptTemplate
+from langchain_openai import ChatOpenAI
+from pydantic import BaseModel, Field, ValidationError
+
+from global_code.helpful_functions import create_logger_error, log_it_sync
+from HappyChoicesAI.ai_state import EthicistAIState, StateManager
 
 load_dotenv()
 
 # Get the API key from the environment variable
 api_key = os.getenv("OPENAI_API_KEY")
 llm = ChatOpenAI(model="gpt-4o", temperature=0, api_key=api_key)
-
+logger = create_logger_error(
+    file_path=os.path.abspath(__file__), name_of_log_file="perform_thought_experiment"
+)
 """
 TODO: Implement the actual agent now The perform_thought_experiment_chain is done (not tested)
 The agent will need to come up with X number of thought experiments
 """
 
 
-def perform_thought_experiments(state: EthicistAIState) -> None:
+def perform_thought_experiments() -> None:
     """
     This will be an agent that will take in the pain points, reasons, and actions of a dilemma and return the best action
     The agent will go through multiple thought experiments to determine the best course of action
-    :param state: EthicistAIState object containing all relevant data
     """
-    state.thought_experiments = [
-        {"happiness": 80.0, "suffering": 20.0},
-        {"happiness": 60.0, "suffering": 40.0},
-    ]
+
+    state = StateManager.get_instance().state
+    proposed_actions = ["Proposed action 1", "Proposed action 2", "Proposed action 3"]
+
+    for proposed_action in proposed_actions:
+        perform_thought_experiment_chain(proposed_action)
 
 
-class ThoughtExperimentAgent(Agent):
-    def __init__(self, tools, context, state):
-        super().__init__(tools=tools)
-        self.context = context
-        self.state = state
+class Actions(BaseModel):
+    actions: List[str] = Field(description="List of actions")
 
-    def act(self, input_dilemma: str):
-        self.state.situation = input_dilemma
-        # Perform at least 3 thought experiments
-        # new plan this will become an agent. The agent will have a tool called propose_action that will be used to propose an action
-        # The agent will be stateful and have access to all of the proposed previous actions and their results
-        # I guess the agent will need to have a state object that will contain all of the relevant data
-        # I guess the agent should decide how many proposed actions for the given dilemma
-        for i in range(3):
-            proposed_action = self.propose_action()
-            result = self.perform_thought_experiment_chain(
-                input_dilemma, proposed_action
-            )
-            print(result)
 
-        # Exit the agent
-        return self.use_tool("exit_agent")
+def propose_all_actions():
+    """
+    This function will use an LLM to propose all of the hypothetical actions that could be taken in a given situation
+    :return:
+    """
+    state = StateManager.get_instance().state
+    output_parser = JsonOutputParser()
+    prompt_template = PromptTemplate(
+        template="""
+You are a world renowned AI ethicist. 
+You have been tasked to propose all of the hypothetical actions that could be taken in the following situation: 
 
-    def propose_action(self) -> str:
-        # Placeholder for action proposal logic
-        return f"Proposed Action {len(self.state.thought_experiments) + 1}"
+{dilemma}
 
-    def perform_thought_experiment_chain(
-        self, input_dilemma: str, proposed_action: str
-    ) -> str:
-        historical_examples = self.state.historical_examples
-        key_criteria = self.state.criteria
+Propose all of the hypothetical actions that could be taken in this situation.
+Your output should be a list of actions that could be taken.
+""",
+        input_variables=["query"],
+    )
 
-        # Execute the chain of prompts
-        parallels = analyze_parallels(state=self.state, proposed_action=proposed_action)
-        criteria_changes = analyze_criteria_changes(
-            state=self.state, proposed_action=proposed_action
-        )
-        percentage_changes = analyze_percentage_changes(
-            state=self.state,
-            proposed_action=proposed_action,
-            criteria_changes=criteria_changes,
-        )
-        proxies_impact = analyze_proxies_impact(
-            state=self.state,
-            proposed_action=proposed_action,
-            criteria_changes=criteria_changes,
-        )
-        quantified_proxies = quantify_proxies(
-            state=self.state,
-            proposed_action=proposed_action,
-            proxies_impact=proxies_impact,
-        )
-        summary = summarize_thought_experiment(
-            proposed_action=proposed_action,
-            parallels=parallels,
-            criteria_changes=criteria_changes,
-            percentage_changes=percentage_changes,
-            proxies_impact=proxies_impact,
-            quantified_proxies=quantified_proxies,
-            state=self.state,
-        )
+    chain = prompt_template | llm
+    output = chain.invoke({"dilemma": state.situation})
+    log_it_sync(logger, custom_message=f"Output: {output}")
+    try:
+        parsed_output = json.loads(str(output))
+        if "actions" not in parsed_output:
+            raise ValueError("JSON does not contain 'actions' key")
+        # Validate the parsed output against the Actions model
+        return parsed_output
+    except (json.JSONDecodeError, ValidationError, ValueError) as e:
+        print(f"Error parsing JSON: {e}")
+        return {"actions": []}
 
-        # Perform the thought experiment
-        self.state.thought_experiments.append(
-            {
-                "proposed_action": proposed_action,
-                "parallels": parallels,
-                "criteria_changes": criteria_changes,
-                "percentage_changes": percentage_changes,
-                "proxies_impact": proxies_impact,
-                "quantified_proxies": quantified_proxies,
-                "summary": summary,
-            }
-        )
-        return summary
+
+def perform_thought_experiment_chain(
+        proposed_action: str
+) -> str:
+    state = StateManager.get_instance().state
+    historical_examples = state.historical_examples
+    key_criteria = state.criteria
+
+    # Execute the chain of prompts
+    parallels = analyze_parallels(state=state, proposed_action=proposed_action)
+    criteria_changes = analyze_criteria_changes(
+        state=state, proposed_action=proposed_action
+    )
+    percentage_changes = analyze_percentage_changes(
+        state=state,
+        proposed_action=proposed_action,
+        criteria_changes=criteria_changes,
+    )
+    proxies_impact = analyze_proxies_impact(
+        state=state,
+        proposed_action=proposed_action,
+        criteria_changes=criteria_changes,
+    )
+    quantified_proxies = quantify_proxies(
+        state=state,
+        proposed_action=proposed_action,
+        proxies_impact=proxies_impact,
+    )
+    summary = summarize_thought_experiment(
+        proposed_action=proposed_action,
+        parallels=parallels,
+        criteria_changes=criteria_changes,
+        percentage_changes=percentage_changes,
+        proxies_impact=proxies_impact,
+        quantified_proxies=quantified_proxies,
+        state=state,
+    )
+
+    # Perform the thought experiment
+    state.thought_experiments.append(
+        {
+            "proposed_action": proposed_action,
+            "parallels": parallels,
+            "criteria_changes": criteria_changes,
+            "percentage_changes": percentage_changes,
+            "proxies_impact": proxies_impact,
+            "quantified_proxies": quantified_proxies,
+            "summary": summary,
+        }
+    )
+    return summary
 
 
 def analyze_parallels(state: EthicistAIState, proposed_action: str) -> str:
@@ -157,7 +177,7 @@ Describe some of the ways that the key criteria will change because of the propo
 
 
 def analyze_percentage_changes(
-    state: EthicistAIState, proposed_action: str, criteria_changes: str
+        state: EthicistAIState, proposed_action: str, criteria_changes: str
 ) -> str:
     prompt_template = ChatPromptTemplate.from_template(
         """
@@ -187,7 +207,7 @@ For all of the key criteria mentioned, output percentage changes for all of the 
 
 
 def analyze_proxies_impact(
-    state: EthicistAIState, proposed_action: str, criteria_changes: str
+        state: EthicistAIState, proposed_action: str, criteria_changes: str
 ) -> str:
     prompt_template = ChatPromptTemplate.from_template(
         """
@@ -218,7 +238,7 @@ Describe the potential impacts on proxies for suffering and happiness, including
 
 
 def quantify_proxies(
-    state: EthicistAIState, proposed_action: str, proxies_impact: str
+        state: EthicistAIState, proposed_action: str, proxies_impact: str
 ) -> str:
     prompt_template = ChatPromptTemplate.from_template(
         """
@@ -248,13 +268,13 @@ provide numerical estimates for the changes in suffering and happiness."""
 
 
 def summarize_thought_experiment(
-    proposed_action: str,
-    parallels: str,
-    criteria_changes: str,
-    percentage_changes: str,
-    proxies_impact: str,
-    quantified_proxies: str,
-    state: EthicistAIState,
+        proposed_action: str,
+        parallels: str,
+        criteria_changes: str,
+        percentage_changes: str,
+        proxies_impact: str,
+        quantified_proxies: str,
+        state: EthicistAIState,
 ) -> str:
     prompt_template = ChatPromptTemplate.from_template(
         """

@@ -1,4 +1,4 @@
-from HappyChoicesAI.ai_state import EthicistAIState
+from HappyChoicesAI.ai_state import EthicistAIState, StateManager
 from HappyChoicesAI.key_criteria import find_key_criteria
 from HappyChoicesAI.historical_examples import find_historical_examples
 from HappyChoicesAI.perform_thought_experiment import perform_thought_experiments
@@ -39,14 +39,14 @@ def main():
 
     # situation: str = input_situation()
     situation = dilemmas[0][0]
-    state = EthicistAIState()
+    state = StateManager.get_instance().state
     state.situation = situation
-    find_historical_examples(situation, state)
-    find_key_criteria(state)
+    find_historical_examples(situation)
+    find_key_criteria()
 
-    perform_thought_experiments(state)
-    pick_best_action(state)
-    summarize_results(state)
+    perform_thought_experiments()
+    pick_best_action()
+    summarize_results()
 
 
 if __name__ == "__main__":

@@ -10,7 +10,7 @@ from langchain_core.runnables.history import RunnableWithMessageHistory
 from langchain_openai import ChatOpenAI
 
 from global_code.helpful_functions import create_logger_error, log_it_sync
-
+from HappyChoicesAI.perform_thought_experiment import perform_thought_experiment_chain
 load_dotenv()
 api_key = os.getenv("OPENAI_API_KEY")
 llm = ChatOpenAI(model="gpt-4o", temperature=0, api_key=api_key)
@@ -27,6 +27,7 @@ class ProposeActionTool(Tool):
 
     def _call(self, input: str) -> str:
         # Here, input is the proposed action
+        perform_thought_experiment_chain(state, input, proposed_action)
         return input
 
 
