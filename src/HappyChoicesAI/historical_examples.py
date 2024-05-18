@@ -2,7 +2,7 @@ import os
 from typing import List
 
 from dotenv import load_dotenv
-from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.prompts import ChatPromptTemplate, PromptTemplate
 from langchain_openai import ChatOpenAI
 from global_code.helpful_functions import CustomError, create_logger_error, log_it_sync
 from HappyChoicesAI.ai_state import Database, EthicistAIState, HistoricalExample, StateManager
@@ -13,7 +13,7 @@ logger = create_logger_error(
 )
 # Get the API key from the environment variable
 api_key = os.getenv("OPENAI_API_KEY")
-llm = ChatOpenAI(model="gpt-4o", temperature=0, api_key=api_key)
+llm = ChatOpenAI(model="gpt-3.5-turbo-0125", temperature=0, api_key=api_key)
 
 """
 The code works, need to ensure LLM outputs are good. (not tested) (always test last it is the most boring) (plus yo boi is tired)
@@ -48,14 +48,15 @@ def get_historical_examples() -> List[HistoricalExample]:
 
 
 def create_prompt_template():
-    return ChatPromptTemplate.from_template(
-        """You are a world renowned AI ethicist. You have been tasked to determine if this historical dilemma is applicable to the current situation. 
+    return PromptTemplate(
+        template="""You are a world renowned AI ethicist. You have been tasked to determine if this historical dilemma is applicable to the current situation. 
 
 The situation is as follows: {situation}. 
 
 The historical dilemma is as follows: {dilemma}.
 
-Do you think this dilemma is applicable? Answer either Yes or No"""
+Do you think this dilemma is applicable? Answer either Yes or No""",
+        input_variables=["situation", "dilemma"],
     )
 
 
@@ -71,9 +72,9 @@ def reason_about_dilemma(dilemma: HistoricalExample) -> bool:
     chain = prompt_template | llm
     output = chain.invoke({"situation": input_dilemma, "dilemma": dilemma.situation})
     log_it_sync(
-        logger, custom_message=f"Output from LLM: {output.choices[0].text.strip()}"
+        logger, custom_message=f"Output from LLM: {output.content}"
     )
-    response = output.choices[0].text.strip().lower()
-    if response in ["yes", "yes."]:
+    response = output.content
+    if response in ["yes", "yes.", "Yes", "Yes."]:
         return True
     return False

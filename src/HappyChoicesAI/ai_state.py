@@ -16,8 +16,8 @@ class EthicistAIState:
     situation: str = ""
     criteria: str = ""
     historical_examples: List[HistoricalExample] = field(default_factory=list)
-    thought_experiments: List[Dict[str, str]] = field(default_factory=list)
-    best_action: str = ""
+    thought_experiments: List[Dict[str, str or int]] = field(default_factory=list)
+    best_action: int = 0  # This is the id of the best action
 
 
 class StateManager:

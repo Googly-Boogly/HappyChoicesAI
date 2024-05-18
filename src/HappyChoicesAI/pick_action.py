@@ -1,19 +1,23 @@
+import json
 import os
 from typing import Dict, List, Tuple
 
 from dotenv import load_dotenv
 from langchain_core.output_parsers import JsonOutputParser
-from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.prompts import PromptTemplate
 from langchain_openai import ChatOpenAI
 
-from HappyChoicesAI.ai_state import EthicistAIState
+from HappyChoicesAI.ai_state import EthicistAIState, StateManager
+from global_code.helpful_functions import create_logger_error, log_it_sync
 
 load_dotenv()
 
 # Get the API key from the environment variable
 api_key = os.getenv("OPENAI_API_KEY")
-llm = ChatOpenAI(model="gpt-4o", temperature=0, api_key=api_key)
-
+llm = ChatOpenAI(model="gpt-3.5-turbo-0125", temperature=0, api_key=api_key)
+logger = create_logger_error(
+    file_path=os.path.abspath(__file__), name_of_log_file="perform_thought_experiment"
+)
 """
 TODO: Implement the pick_best_action function that will determine the best action based on the outcomes of the thought experiments.
 This is what the input to the decide_what_the_best_action_to_take_is function should look like:
@@ -45,7 +49,7 @@ The pick_best_action function is really messy right now fix it.
 """
 
 
-def pick_best_action(state: EthicistAIState) -> None:
+def pick_best_action() -> None:
     """
     Determines and updates the best action based on the outcomes of the thought experiments.
     The best action is based on maximizing happiness and minimizing suffering.
@@ -56,32 +60,34 @@ def pick_best_action(state: EthicistAIState) -> None:
     # Than have a final LLM look through all of the thought experiments and all of the arguments and determine the best action
 
     # First make the thought experiments into nice looking text
-    text_of_thought_experiments = []
-    for thought in state.thought_experiments:
-        text = """
-Thought Experiment:
-        """
-    rename_me: List[Tuple] = []
-    runner = 0
-    while runner < len(text_of_thought_experiments):
-        other_thought_experiments = (
-            text_of_thought_experiments[:runner]
-            + text_of_thought_experiments[runner + 1 :]
-        )
-        text_of_other_thought_experiments = make_other_thought_experiments_pretty_text(
-            other_thought_experiments
-        )
-        best_action = argue_best_action(
-            thought_experiment_to_argue=text_of_thought_experiments[runner],
-            other_thought_experiments=text_of_other_thought_experiments,
-        )
-        rename_me.append((text_of_thought_experiments[runner], best_action))
-        runner += 1
 
-    # Now we have all of the arguments for why each thought experiment is good and bad
-    # Now we have an LLM pick the best one
-    winning_thought_experiment = decide_what_the_best_action_to_take_is()
-    state.best_action = winning_thought_experiment
+    # first add id's to all of the thought experiments
+    state = StateManager.get_instance().state
+
+    for i in range(len(state.thought_experiments)):
+        state.thought_experiments[i]["id"] = i + 1
+
+    runner = 0
+    while runner < len(state.thought_experiments):
+        thought_experiment = state.thought_experiments[runner]["summary"]
+
+        # get the other thought experiments into a list of strings with their summaries
+        other_thought_experiments_dict = (
+                state.thought_experiments[:runner]
+                + state.thought_experiments[runner + 1:])
+        other_thought_experiments_list = []
+        for thought in other_thought_experiments_dict:
+            other_thought_experiments_list.append(thought["summary"])
+
+        other_thought_experiments_llm_ready_text: str = make_other_thought_experiments_pretty_text(
+            other_thought_experiments_list)
+        for_and_against: Dict[str, str] = argue_best_action(thought_experiment_to_argue=thought_experiment,
+                                                            other_thought_experiments=other_thought_experiments_llm_ready_text)
+        state.thought_experiments[runner]["arguments_for"] = for_and_against["for"]
+        state.thought_experiments[runner]["arguments_against"] = for_and_against["against"]
+        runner += 1
+    best_action: Dict[str, str] = decide_what_the_best_action_to_take_is()
+    state.best_action = best_action["id"]
 
 
 def argue_best_action(
@@ -94,10 +100,102 @@ def argue_best_action(
     :param other_thought_experiments: The other thought experiments
     :return: The argument for why the thought experiment is the best action and why it is not
     """
-    # new plan the LLM should ouput a JSON with the arguments for and against the thought experiment
-    prompt_template = ChatPromptTemplate.from_template(
-        """
-You are a world renowned AI ethicist. You have been tasked to argue why the first thought experiment is the best course of action and why it is not.
+    prompt_template = get_argue_best_action_prompt()
+    chain = prompt_template | llm
+    output = chain.invoke(
+        {
+            "thought_experiment_1": thought_experiment_to_argue,
+            "other_thought_experiments": other_thought_experiments,
+        }
+    )
+
+    # Turn the output into a JSON
+    try:
+        parsed_output = json.loads(output.content)
+        for_argument = parsed_output["for"]
+        against_argument = parsed_output["against"]
+        log_it_sync(
+            logger,
+            custom_message=f"Arguments for the thought experiment: {for_argument}",
+        )
+        log_it_sync(
+            logger,
+            custom_message=f"Arguments against the thought experiment: {against_argument}",
+        )
+        return {"for": for_argument, "against": against_argument}
+
+    except (json.JSONDecodeError, KeyError) as e:
+        log_it_sync(logger, custom_message=f"Error: {e}", log_level="error")
+        return {}
+
+def decide_what_the_best_action_to_take_is() -> Dict[str, str]:
+    """
+    The LLM will take in the best action determined and the all of the context that was used to get too that
+    action and summarize the results
+    :param state: EthicistAIState object containing the chosen best action
+    """
+    state = StateManager.get_instance().state
+    all_thought_experiments = make_all_thought_experiment_pretty_text_with_arguments()
+    prompt_template = get_decide_best_action_prompt()
+    chain = prompt_template | llm
+    output = chain.invoke(
+        {
+            "all_thought_experiments": all_thought_experiments,
+        }
+    )
+
+    try:
+        parsed_output = json.loads(output.content)
+        log_it_sync(logger, custom_message=f"Reasoning: {parsed_output['reasoning']}")
+        return parsed_output
+    except (json.JSONDecodeError, KeyError) as e:
+        log_it_sync(logger, custom_message=f"Error: {e}", log_level="error")
+        return {}
+
+
+def make_other_thought_experiments_pretty_text(
+        other_thought_experiments: List[str],
+) -> str:
+    """
+    Will take in the other thought experiments and make them into nice looking text that the LLM can read
+    :param other_thought_experiments: The other thought experiments
+    :return: The other thought experiments in nice looking text
+    """
+    text = ""
+    for thought in other_thought_experiments:
+        text += f"""
+Other Thought Experiment:
+{thought}
+"""
+        text += "\n"
+    return text
+
+
+def make_all_thought_experiment_pretty_text_with_arguments() -> str:
+    """
+    Will take in all of the thought experiments and make them into nice looking text that the LLM can read
+    :return: The thought experiments in nice looking text
+    """
+    state = StateManager.get_instance().state
+    text = ""
+    for thought in state.thought_experiments:
+        text += f"""
+Thought Experiment:
+{thought["summary"]}
+Arguments For:
+{thought["arguments_for"]}
+Arguments Against:
+{thought["arguments_against"]}
+ID: {thought["id"]}
+"""
+        text += "\n"
+    return text
+
+
+def get_argue_best_action_prompt() -> PromptTemplate:
+    return PromptTemplate(
+        template="""
+You are a world-renowned AI ethicist. You have been tasked to argue why the first thought experiment is the best course of action and why it is not.
 
 Dilemma: {dilemma}
 
@@ -110,64 +208,29 @@ The first thought experiment is as follows: {thought_experiment_1}
 Make the argument why the first thought experiment is not the best course of action and why it is.
 Your answer should be concise and to the point.
 Output your answer in the following format:
-{
+{{
     "for": "Your argument for why the thought experiment is the best course of action",
     "against": "Your argument for why the thought experiment is not the best course of action"
-}
-"""
-    )
-    chain = prompt_template | llm
-    output = chain.invoke(
-        {
-            "thought_experiment_1": thought_experiment_to_argue,
-            "other_thought_experiments": other_thought_experiments,
-        }
-    )
-    # Turn the output into a JSON
-    output_parser = JsonOutputParser()
-    # The str() around output may break it
-    parsed_output: dict = output_parser.parse(str(output))
-    return parsed_output
-
-
-def decide_what_the_best_action_to_take_is(rename_me: List[Tuple]) -> str:
-    """
-    The LLM will take in the best action determined and the all of the context that was used to get too that
-    action and summarize the results
-    :param state: EthicistAIState object containing the chosen best action
-    """
-    thought_experiments_and_arguments = ""
-    for thought_experiment, argument in rename_me:
-        thought_experiments_and_arguments += f"""
-Thought Experiment:
-{thought_experiment}
-Argument:
-{argument}
-        
-"""
-    prompt_template = ChatPromptTemplate.from_template(
-        """
-You are a world renowned AI ethicist. You have been tasked to figure out the most ethical action to take in the given scenario
-
-{thought_experiments_and_arguments}
-
-Make the argument why the first thought experiment is the best course of action and why it is not."""
+}}
+""",
+        input_variables=["dilemma", "thought_experiment_1", "other_thought_experiments", "historical_examples"],
     )
 
+def get_decide_best_action_prompt() -> PromptTemplate:
+    return PromptTemplate(
+        template="""
+You are a world-renowned AI ethicist. You have been tasked to determine the best course of action based off of all of the thought experiments and their arguments.
 
-def make_other_thought_experiments_pretty_text(
-    other_thought_experiments: List[str],
-) -> str:
-    """
-    Will take in the other thought experiments and make them into nice looking text that the LLM can read
-    :param other_thought_experiments: The other thought experiments
-    :return: The other thought experiments in nice looking text
-    """
-    text = ""
-    for thought in other_thought_experiments:
-        text += f"""
-Thought Experiment:
-{thought}
-"""
-        text += "\n"
-    return text
+All Thought Experiments:
+{all_thought_experiments}
+
+Analyze all of the thought experiments and their arguments and determine the best course of action.
+Output the ID of the best course of action.
+Example output:
+{{
+    "reasoning": "Your reasoning for why this is the best course of action"
+    "id": 1,
+}}
+""",
+        input_variables=["all_thought_experiments"],
+    )

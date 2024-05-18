@@ -2,33 +2,34 @@
 
 import unittest
 from unittest.mock import MagicMock, patch
+
+from HappyChoicesAI.ai_state import StateManager
 from HappyChoicesAI.historical_examples import (
     HistoricalExample,
     reason_about_dilemma,
-    ChatPromptTemplate,
 )
 
 
 class TestReasonAboutDilemma(unittest.TestCase):
 
-    @patch("HappyChoicesAI.historical_examples.ChatPromptTemplate.from_template")
     @patch("HappyChoicesAI.historical_examples.llm")
-    def test_reason_about_dilemma_yes(self, mock_llm, mock_prompt_template):
+    @patch("HappyChoicesAI.historical_examples.create_prompt_template")
+    def test_reason_about_dilemma_yes(self, mock_create_prompt_template, mock_llm):
         # Arrange
         mock_output = MagicMock()
-        mock_output.choices = [MagicMock(text="Yes")]
+        mock_output.content = "yes"
 
-        # Mock the chain object and its invoke method
         mock_chain = MagicMock()
         mock_chain.invoke.return_value = mock_output
 
-        # Mock the prompt_template | llm to return our mock chain
-        mock_prompt_template.return_value.__or__.return_value = mock_chain
+        mock_create_prompt_template.return_value.__or__.return_value = mock_chain
 
         input_dilemma = "input dilemma"
         dilemma = HistoricalExample(
             situation="Historical dilemma", action_taken="Action", reasoning="Reasoning"
         )
+        state = StateManager.get_instance().state
+        state.situation = input_dilemma
 
         # Act
         result = reason_about_dilemma(dilemma)
@@ -36,24 +37,24 @@ class TestReasonAboutDilemma(unittest.TestCase):
         # Assert
         self.assertTrue(result)
 
-    @patch("HappyChoicesAI.historical_examples.ChatPromptTemplate.from_template")
     @patch("HappyChoicesAI.historical_examples.llm")
-    def test_reason_about_dilemma_no(self, mock_llm, mock_prompt_template):
+    @patch("HappyChoicesAI.historical_examples.create_prompt_template")
+    def test_reason_about_dilemma_no(self, mock_create_prompt_template, mock_llm):
         # Arrange
         mock_output = MagicMock()
-        mock_output.choices = [MagicMock(text="No")]
+        mock_output.content = "no"
 
-        # Mock the chain object and its invoke method
         mock_chain = MagicMock()
         mock_chain.invoke.return_value = mock_output
 
-        # Mock the prompt_template | llm to return our mock chain
-        mock_prompt_template.return_value.__or__.return_value = mock_chain
+        mock_create_prompt_template.return_value.__or__.return_value = mock_chain
 
         input_dilemma = "input dilemma"
         dilemma = HistoricalExample(
             situation="Historical dilemma", action_taken="Action", reasoning="Reasoning"
         )
+        state = StateManager.get_instance().state
+        state.situation = input_dilemma
 
         # Act
         result = reason_about_dilemma(dilemma)
@@ -61,24 +62,24 @@ class TestReasonAboutDilemma(unittest.TestCase):
         # Assert
         self.assertFalse(result)
 
-    @patch("HappyChoicesAI.historical_examples.ChatPromptTemplate.from_template")
     @patch("HappyChoicesAI.historical_examples.llm")
-    def test_reason_about_dilemma_invalid_response(self, mock_llm, mock_prompt_template):
+    @patch("HappyChoicesAI.historical_examples.create_prompt_template")
+    def test_reason_about_dilemma_invalid_response(self, mock_create_prompt_template, mock_llm):
         # Arrange
         mock_output = MagicMock()
-        mock_output.choices = [MagicMock(text="Maybe")]
+        mock_output.content = "maybe"
 
-        # Mock the chain object and its invoke method
         mock_chain = MagicMock()
         mock_chain.invoke.return_value = mock_output
 
-        # Mock the prompt_template | llm to return our mock chain
-        mock_prompt_template.return_value.__or__.return_value = mock_chain
+        mock_create_prompt_template.return_value.__or__.return_value = mock_chain
 
         input_dilemma = "input dilemma"
         dilemma = HistoricalExample(
             situation="Historical dilemma", action_taken="Action", reasoning="Reasoning"
         )
+        state = StateManager.get_instance().state
+        state.situation = input_dilemma
 
         # Act
         result = reason_about_dilemma(dilemma)
@@ -86,24 +87,24 @@ class TestReasonAboutDilemma(unittest.TestCase):
         # Assert
         self.assertFalse(result)
 
-    @patch("HappyChoicesAI.historical_examples.ChatPromptTemplate.from_template")
     @patch("HappyChoicesAI.historical_examples.llm")
-    def test_reason_about_dilemma_edge_case(self, mock_llm, mock_prompt_template):
+    @patch("HappyChoicesAI.historical_examples.create_prompt_template")
+    def test_reason_about_dilemma_edge_case(self, mock_create_prompt_template, mock_llm):
         # Arrange
         mock_output = MagicMock()
-        mock_output.choices = [MagicMock(text="Unknown")]
+        mock_output.content = "unknown"
 
-        # Mock the chain object and its invoke method
         mock_chain = MagicMock()
         mock_chain.invoke.return_value = mock_output
 
-        # Mock the prompt_template | llm to return our mock chain
-        mock_prompt_template.return_value.__or__.return_value = mock_chain
+        mock_create_prompt_template.return_value.__or__.return_value = mock_chain
 
         input_dilemma = "input dilemma"
         dilemma = HistoricalExample(
             situation="Historical dilemma", action_taken="Action", reasoning="Reasoning"
         )
+        state = StateManager.get_instance().state
+        state.situation = input_dilemma
 
         # Act
         result = reason_about_dilemma(dilemma)

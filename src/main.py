@@ -1,16 +1,32 @@
+import os
+
+from dotenv import load_dotenv
+from langchain_core.output_parsers import JsonOutputParser
+from langchain_core.prompts import PromptTemplate
+from langchain_openai import ChatOpenAI
+
 from HappyChoicesAI.ai_state import EthicistAIState, StateManager
 from HappyChoicesAI.key_criteria import find_key_criteria
 from HappyChoicesAI.historical_examples import find_historical_examples
 from HappyChoicesAI.perform_thought_experiment import perform_thought_experiments
 from HappyChoicesAI.pick_action import pick_best_action
 from HappyChoicesAI.summarize_result import summarize_results
+from global_code.langchain import process_prompt, toggle_conversation_history
+
 import time
 
+from global_code.helpful_functions import create_logger_error, log_it_sync
 
 """
 First thing to do tomorrow write test!
 """
-
+load_dotenv()
+logger = create_logger_error(
+    file_path=os.path.abspath(__file__), name_of_log_file="historical_examples"
+)
+# Get the API key from the environment variable
+api_key = os.getenv("OPENAI_API_KEY")
+llm = ChatOpenAI(model="gpt-3.5-turbo-0125", temperature=0, api_key=api_key)
 
 def main():
     time.sleep(5)
@@ -37,14 +53,55 @@ def main():
         ),
     ]
 
+    # prompt_file_path = "prompts/example_prompt.txt"
+    # input_data = {"context": "Jake"}
+    #
+    # # try:
+    # output = process_prompt(prompt_file_path, input_data, use_env_vars=["OPENAI_API_KEY"], log_enabled=True)
+    # print("Output:", output)
+    # # except ValueError as ve:
+    # #     log_it_sync(logger, custom_message=f"Error: {str(ve)}", log_level="error")
+    # #     print(f"Error: {str(ve)}")
+    # raise NotImplemented
+    output_parser = JsonOutputParser()
+    prompt_template = PromptTemplate(
+        template="""
+You are a world renowned AI ethicist.
+You have been tasked to propose all of the hypothetical actions that could be taken in the following situation:
+
+{dilemma}
+
+Propose all of the hypothetical actions that could be taken in this situation.
+Your output should be a list of actions that could be taken.
+Respond with a JSON object containing the list of actions.
+EXAMPLE:
+{{
+    "actions": ["Action 1", "Action 2", "Action 3"]
+}}
+    """,
+        input_variables=["query"],
+    )
+
+    # chain = prompt_template | llm | output_parser
+    # output = chain.invoke({"dilemma": dilemmas[0][0]})
+    #
+    # log_it_sync(logger, custom_message=f"Output: {output['actions']}")
+
     # situation: str = input_situation()
+
+
     situation = dilemmas[0][0]
     state = StateManager.get_instance().state
     state.situation = situation
-    find_historical_examples(situation)
+    find_historical_examples()
     find_key_criteria()
 
     perform_thought_experiments()
+    log_it_sync(logger, custom_message=f"State situation: {state.situation}")
+    log_it_sync(logger, custom_message=f"State criteria: {state.criteria}")
+    log_it_sync(logger, custom_message=f"State historical examples: {state.historical_examples}")
+    log_it_sync(logger, custom_message=f"State thought experiments: {state.thought_experiments}")
+
     pick_best_action()
     summarize_results()
 
