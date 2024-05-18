@@ -1,5 +1,0 @@
-{
-    "prompts": "What is my name? {context}",
-    "input_variables": ["context"],
-    "output_variables": None,
-}

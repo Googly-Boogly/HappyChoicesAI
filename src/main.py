@@ -12,7 +12,7 @@ from HappyChoicesAI.perform_thought_experiment import perform_thought_experiment
 from HappyChoicesAI.pick_action import pick_best_action
 from HappyChoicesAI.summarize_result import summarize_results
 from global_code.langchain import process_prompt, toggle_conversation_history
-
+from global_code.helpful_functions import benchmark_function
 import time
 
 from global_code.helpful_functions import create_logger_error, log_it_sync
@@ -28,6 +28,8 @@ logger = create_logger_error(
 api_key = os.getenv("OPENAI_API_KEY")
 llm = ChatOpenAI(model="gpt-3.5-turbo-0125", temperature=0, api_key=api_key)
 
+
+@benchmark_function
 def main():
     time.sleep(5)
     dilemmas = [
@@ -97,14 +99,22 @@ EXAMPLE:
     find_key_criteria()
 
     perform_thought_experiments()
-    log_it_sync(logger, custom_message=f"State situation: {state.situation}")
-    log_it_sync(logger, custom_message=f"State criteria: {state.criteria}")
-    log_it_sync(logger, custom_message=f"State historical examples: {state.historical_examples}")
-    log_it_sync(logger, custom_message=f"State thought experiments: {state.thought_experiments}")
 
     pick_best_action()
-    summarize_results()
+    markdown = True
+    summarize_results(markdown=markdown)
 
+    log_it_sync(logger, custom_message=f"Final Summary: {state.final_summary.all_thought_experiments}")
+    log_it_sync(logger, custom_message=f"Final Summary: {state.final_summary.conclusion}")
+    log_it_sync(logger, custom_message=f"Final Summary: {state.final_summary.insights}")
+    log_it_sync(logger, custom_message=f"Final Summary: {state.final_summary.historical_examples_summary}")
+    log_it_sync(logger, custom_message=f"Final Summary: {state.final_summary.themes}")
+    log_it_sync(logger, custom_message=f"Final Summary: {state.final_summary.chosen_best_action_summary}")
+    log_it_sync(logger, custom_message=f"Final Summary: {state.final_summary.other_thought_experiments_summary}")
+    log_it_sync(logger, custom_message=f"Final Summary: {state.final_summary.introduction}")
+    log_it_sync(logger, custom_message=f"Final Summary: {state.final_summary.lessons_learned}")
+    if markdown:
+        log_it_sync(logger, custom_message=f"Final Summary: {state.final_summary.markdown}")
 
 if __name__ == "__main__":
     main()

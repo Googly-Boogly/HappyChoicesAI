@@ -1,6 +1,7 @@
 import json
 import os
-from typing import Dict, List, Optional, Union
+import time
+from typing import Any, Callable, Dict, List, Optional, Union
 
 from dotenv import load_dotenv
 from langchain_core.output_parsers import JsonOutputParser
@@ -169,6 +170,46 @@ def process_prompt(prompt_file: str, input_dict: Dict[str, str], use_env_vars: O
                     log_level="info")
 
     return output
+
+
+def invoke_with_retry(chain: Any, input_data: Dict[str, Any], max_retries: int = 3, delay: float = 1.0) -> Optional[str]:
+    """
+    Invokes the chain with retry logic.
+    :param chain: The chain to invoke.
+    :param input_data: The input data for the chain.
+    :param max_retries: The maximum number of retries.
+    :param delay: The delay between retries in seconds.
+    :return: The output content if successful, or None if all retries fail.
+    """
+    for attempt in range(max_retries):
+        try:
+            output = chain.invoke(input_data)
+            return output.content
+        except Exception as e:
+            log_it_sync(logger, custom_message=f"Error on attempt {attempt + 1}: {e}", log_level="error")
+            time.sleep(delay)
+    return None
+
+
+def retry_fail_json_output(func: Callable, *args, **kwargs) -> Dict:
+    """
+    Retries the function call with JSON output parsing if the output is not a JSON object. Or empty JSON
+    :param func: The function to call.
+    :param args: The positional arguments for the function.
+    :param kwargs: The keyword arguments for the function.
+    :return: The JSON output if successful, or None if all retries fail.
+    """
+    for attempt in range(3):
+        try:
+            output = func(*args, **kwargs)
+            if isinstance(output, dict) and output != {}:
+                return output
+            else:
+                raise ValueError("Output is not a JSON object.")
+        except Exception as e:
+            log_it_sync(logger, custom_message=f"Error on attempt {attempt + 1}: {e}", log_level="error")
+            time.sleep(1.0)
+    return {}
 
 
 # Example usage of the functions

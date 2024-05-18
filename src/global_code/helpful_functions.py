@@ -1,7 +1,9 @@
+import inspect
 import os
 import logging
+import time
 import traceback
-from typing import Optional
+from typing import Any, Callable, Optional
 import asyncio
 import yaml
 from datetime import datetime
@@ -223,29 +225,55 @@ def log_it_sync(
     return output
 
 
-# # Example usage in synchronous code
-# if __name__ == "__main__":
-#     config = load_config()
-#     logger = create_logger_error(
-#         file_path=os.path.abspath(__file__),
-#         name_of_log_file="example_log",
-#         config=config,
-#     )
-#     try:
-#         x = 0 / 0
-#     except Exception as e:
-#         asyncio.run(log_it(logger, e))
-#
-#     # Example usage in asynchronous code
-#     async def main():
-#         logger = create_logger_error(
-#             file_path=os.path.abspath(__file__),
-#             name_of_log_file="example_log_async",
-#             config=config,
-#         )
-#         try:
-#             x = 0 / 0
-#         except Exception as e:
-#             await log_it(logger, e)
-#
-#     asyncio.run(main())
+logger_benchmark = create_logger_error(
+    file_path=os.path.abspath(__file__), name_of_log_file="logger_benchmark"
+)
+
+
+def benchmark_function(func: Optional[Callable] = None, *, file_prefix: Optional[str] = None):
+    """
+    Benchmarks your function and logs the benchmark to a log file.
+    :param func: The function to be decorated.
+    :param file_prefix: if you want to add a prefix to the function name in the log.
+    :return: A decorator that benchmarks the decorated function.
+
+    Usage:
+        from this_module import benchmark_function
+
+        @benchmark_function
+        def some_function(*args, **kwargs):
+            # function implementation
+
+        @benchmark_function(file_prefix="prefix_")
+        def another_function(*args, **kwargs):
+            # function implementation
+    """
+
+    if func is None:
+        # If func is None, it means the decorator was called with arguments
+        def decorator(func: Callable):
+            return benchmark_function(func, file_prefix=file_prefix)
+
+        return decorator
+
+    def wrapper(*args, **kwargs):
+        calling_frame = inspect.stack()[1]
+        file_path: str = calling_frame[1]
+        file_name: str = func.__name__
+
+        if file_prefix is not None:
+            file_name = file_prefix + file_name
+
+        start_time = time.time()
+
+        result: Any = func(*args, **kwargs)
+
+        end_time = time.time()
+        duration = end_time - start_time
+        log_it_sync(
+            logger_benchmark,
+            custom_message=f"{file_name} took {duration} seconds to execute.",
+        )
+        return result
+
+    return wrapper

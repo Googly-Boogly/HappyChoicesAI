@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
-from typing import Dict, List, Tuple, Any
+from typing import Dict, List, Optional
+
 import mysql.connector
 from mysql.connector import Error
 
@@ -12,12 +13,26 @@ class HistoricalExample:
 
 
 @dataclass
+class SummaryAgentAllThoughtExperiments:
+    all_thought_experiments: str
+    conclusion: str
+    insights: str
+    historical_examples_summary: str
+    themes: str
+    chosen_best_action_summary: str
+    other_thought_experiments_summary: List[str]
+    introduction: str
+    lessons_learned: str
+    markdown: str
+
+
+@dataclass
 class EthicistAIState:
     situation: str = ""
     criteria: str = ""
     historical_examples: List[HistoricalExample] = field(default_factory=list)
     thought_experiments: List[Dict[str, str or int]] = field(default_factory=list)
-    best_action: int = 0  # This is the id of the best action
+    best_action: Optional[int] = None  # This is the id of the best action
 
 
 class StateManager:
@@ -36,6 +51,22 @@ class StateManager:
             self.state = EthicistAIState()
             StateManager._instance = self
 
+
+class StateManagerSummary:
+    _instance = None
+
+    @staticmethod
+    def get_instance():
+        if StateManagerSummary._instance is None:
+            StateManagerSummary()
+        return StateManagerSummary._instance
+
+    def __init__(self):
+        if StateManagerSummary._instance is not None:
+            raise Exception("This class is a singleton!")
+        else:
+            self.state = SummaryAgentAllThoughtExperiments()
+            StateManagerSummary._instance = self
 
 
 class Database:
@@ -77,7 +108,6 @@ class Database:
         cursor.close()
         connection.close()
         return examples
-
 
 # Example usage:
 # db = Database(host='mysql', database='happychoices', user='root', password='password')

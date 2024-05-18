@@ -8,6 +8,7 @@ from langchain_core.prompts import PromptTemplate
 from langchain_openai import ChatOpenAI
 
 from HappyChoicesAI.ai_state import EthicistAIState, StateManager
+from global_code.langchain import invoke_with_retry, retry_fail_json_output
 from global_code.helpful_functions import create_logger_error, log_it_sync
 
 load_dotenv()
@@ -16,7 +17,7 @@ load_dotenv()
 api_key = os.getenv("OPENAI_API_KEY")
 llm = ChatOpenAI(model="gpt-3.5-turbo-0125", temperature=0, api_key=api_key)
 logger = create_logger_error(
-    file_path=os.path.abspath(__file__), name_of_log_file="perform_thought_experiment"
+    file_path=os.path.abspath(__file__), name_of_log_file="pick_action"
 )
 """
 TODO: Implement the pick_best_action function that will determine the best action based on the outcomes of the thought experiments.
@@ -81,13 +82,23 @@ def pick_best_action() -> None:
 
         other_thought_experiments_llm_ready_text: str = make_other_thought_experiments_pretty_text(
             other_thought_experiments_list)
-        for_and_against: Dict[str, str] = argue_best_action(thought_experiment_to_argue=thought_experiment,
-                                                            other_thought_experiments=other_thought_experiments_llm_ready_text)
-        state.thought_experiments[runner]["arguments_for"] = for_and_against["for"]
-        state.thought_experiments[runner]["arguments_against"] = for_and_against["against"]
+        for_and_against: Dict[str, str] = retry_fail_json_output(argue_best_action, thought_experiment,
+                                                                 other_thought_experiments_llm_ready_text)
+
+        if for_and_against != {}:
+            state.thought_experiments[runner]["arguments_for"] = for_and_against["for"]
+            state.thought_experiments[runner]["arguments_against"] = for_and_against["against"]
+        else:
+            state.thought_experiments[runner]["arguments_for"] = ""
+            state.thought_experiments[runner]["arguments_against"] = ""
+
         runner += 1
-    best_action: Dict[str, str] = decide_what_the_best_action_to_take_is()
-    state.best_action = best_action["id"]
+    best_action: Dict[str, str] = retry_fail_json_output(decide_what_the_best_action_to_take_is)
+
+    # check if key in dict
+
+    if "id" in best_action:
+        state.best_action = best_action["id"]
 
 
 def argue_best_action(
@@ -124,9 +135,10 @@ def argue_best_action(
         )
         return {"for": for_argument, "against": against_argument}
 
-    except (json.JSONDecodeError, KeyError) as e:
+    except (json.JSONDecodeError, KeyError, Exception) as e:
         log_it_sync(logger, custom_message=f"Error: {e}", log_level="error")
         return {}
+
 
 def decide_what_the_best_action_to_take_is() -> Dict[str, str]:
     """
@@ -148,7 +160,7 @@ def decide_what_the_best_action_to_take_is() -> Dict[str, str]:
         parsed_output = json.loads(output.content)
         log_it_sync(logger, custom_message=f"Reasoning: {parsed_output['reasoning']}")
         return parsed_output
-    except (json.JSONDecodeError, KeyError) as e:
+    except (json.JSONDecodeError, KeyError, Exception) as e:
         log_it_sync(logger, custom_message=f"Error: {e}", log_level="error")
         return {}
 
