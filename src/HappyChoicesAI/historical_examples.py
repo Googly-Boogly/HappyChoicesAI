@@ -13,7 +13,7 @@ logger = create_logger_error(
 )
 # Get the API key from the environment variable
 api_key = os.getenv("OPENAI_API_KEY")
-llm = ChatOpenAI(model="gpt-3.5-turbo-0125", temperature=0, api_key=api_key)
+llm = ChatOpenAI(model="gpt-4o", temperature=0, api_key=api_key)
 
 """
 The code works, need to ensure LLM outputs are good. (not tested) (always test last it is the most boring) (plus yo boi is tired)

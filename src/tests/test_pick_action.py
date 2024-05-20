@@ -4,26 +4,26 @@ import unittest
 from unittest.mock import patch, MagicMock
 from HappyChoicesAI.pick_action import pick_best_action, argue_best_action, \
     decide_what_the_best_action_to_take_is
-from HappyChoicesAI.ai_state import StateManager
+from HappyChoicesAI.ai_state import StateManager, HistoricalExample
 
 
 class TestPickBestAction(unittest.TestCase):
 
     def setUp(self):
         # Initialize the state
-        state = StateManager.get_instance().state
-        state.thought_experiments = [
+        self.state = StateManager.get_instance().state
+        self.state.thought_experiments = [
             {"summary": "Thought experiment 1"},
             {"summary": "Thought experiment 2"},
             {"summary": "Thought experiment 3"},
         ]
-        state.best_action = None
+        self.state.best_action = None
 
     def tearDown(self):
         # Reset the state for other tests
-        state = StateManager.get_instance().state
-        state.thought_experiments = []
-        state.best_action = None
+        self.state = StateManager.get_instance().state
+        self.state.thought_experiments = []
+        self.state.best_action = None
 
     @patch('HappyChoicesAI.pick_action.llm')
     @patch('HappyChoicesAI.pick_action.get_argue_best_action_prompt')
@@ -35,25 +35,31 @@ class TestPickBestAction(unittest.TestCase):
         for idx, te in enumerate(state.thought_experiments):
             self.assertEqual(te["id"], idx + 1)
 
-    @patch('HappyChoicesAI.pick_action.llm')
-    @patch('HappyChoicesAI.pick_action.get_argue_best_action_prompt')
-    @patch('HappyChoicesAI.pick_action.get_decide_best_action_prompt')
     @patch('HappyChoicesAI.pick_action.make_other_thought_experiments_pretty_text')
-    def test_argument_creation(self, mock_make_other_text, mock_get_decide_best_action_prompt, mock_get_argue_best_action_prompt, mock_llm):
+    @patch('HappyChoicesAI.pick_action.get_decide_best_action_prompt')
+    @patch('HappyChoicesAI.pick_action.get_argue_best_action_prompt')
+    @patch('HappyChoicesAI.pick_action.retry_fail_json_output')
+    def test_argument_creation(self, mock_retry_fail_json_output, mock_get_argue_best_action_prompt,
+                               mock_get_decide_best_action_prompt, mock_make_other_text):
         # Mock the functions
         mock_make_other_text.side_effect = lambda x: "Formatted text"
-        mock_argue_best_action_prompt = MagicMock()
-        mock_argue_best_action_prompt.__or__.return_value.invoke.return_value = MagicMock(content='{"for": "For argument", "against": "Against argument"}')
-        mock_get_argue_best_action_prompt.return_value = mock_argue_best_action_prompt
 
-        state = StateManager.get_instance().state
+        mock_retry_fail_json_output.side_effect = [
+            {"for": "For argument", "against": "Against argument"},  # First call for arguments
+            {"for": "For argument", "against": "Against argument"},  # Second call for arguments
+            {"for": "For argument", "against": "Against argument"},  # Third call for arguments
+            {"id": 1}  # Final call for deciding the best action
+        ]
+
         pick_best_action()
 
-        for te in state.thought_experiments:
+        for te in self.state.thought_experiments:
             self.assertIn("arguments_for", te)
             self.assertIn("arguments_against", te)
             self.assertEqual(te["arguments_for"], "For argument")
             self.assertEqual(te["arguments_against"], "Against argument")
+
+        self.assertEqual(self.state.best_action, 1)
 
     @patch('HappyChoicesAI.pick_action.llm')
     @patch('HappyChoicesAI.pick_action.get_decide_best_action_prompt')
@@ -107,9 +113,12 @@ class TestPickBestAction(unittest.TestCase):
         self.assertIsNone(state.best_action)
 
 
-    @patch("HappyChoicesAI.pick_action.get_argue_best_action_prompt")
-    @patch("HappyChoicesAI.pick_action.llm")
-    def test_argue_best_action(self, mock_llm, mock_get_argue_best_action_prompt):
+    @patch('HappyChoicesAI.pick_action.make_other_thought_experiments_pretty_text')
+    @patch('HappyChoicesAI.pick_action.get_decide_best_action_prompt')
+    @patch('HappyChoicesAI.pick_action.get_argue_best_action_prompt')
+    @patch('HappyChoicesAI.pick_action.retry_fail_json_output')
+    def test_argue_best_action(self, mock_retry_fail_json_output, mock_get_argue_best_action_prompt,
+                               mock_get_decide_best_action_prompt, mock_make_other_text):
         # Arrange
         mock_output = MagicMock()
         mock_output.content = '{"for": "Argument for", "against": "Argument against"}'
@@ -127,7 +136,7 @@ class TestPickBestAction(unittest.TestCase):
         other_thought_experiments = "Other Thought Experiments"
         state = StateManager.get_instance().state
         state.situation = "Test Dilemma"
-        state.historical_examples = ["Historical Example 1"]
+        state.historical_examples = [HistoricalExample(situation="Test Dilemma", action_taken="Test Action", reasoning="Test Reasoning")]
 
         # Act
         result = argue_best_action(thought_experiment_to_argue, other_thought_experiments)

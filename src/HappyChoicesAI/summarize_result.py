@@ -12,7 +12,7 @@ from global_code.langchain import invoke_with_retry
 TODO: Implement the summarize_results function that will summarize the results of the ethical dilemma. (Should be supa ezpz)
 """
 api_key = os.getenv("OPENAI_API_KEY")
-llm = ChatOpenAI(model="gpt-3.5-turbo-0125", temperature=0, api_key=api_key)
+llm = ChatOpenAI(model="gpt-4o", temperature=0, api_key=api_key)
 logger = create_logger_error(
     file_path=os.path.abspath(__file__), name_of_log_file="perform_thought_experiment"
 )
@@ -26,26 +26,34 @@ def summarize_results(markdown: bool = False) -> Optional[Dict[str, str]]:
     """
     state = StateManager.get_instance().state
     run_introduction_prompt()
-    run_summary_of_selected_thought_experiment(state.thought_experiments[state.best_action])
+    best_thought_experiment = None
+    for thought in state.thought_experiments:
+        if thought["id"] == state.best_action:
+            best_thought_experiment = thought
+            break
+    log_it_sync(logger, custom_message=f"Best Thought Experiment: {best_thought_experiment}")
+
+    run_summary_of_selected_thought_experiment(best_thought_experiment)
     run_common_themes_prompt()
     run_historical_examples_prompt_summary_prompt()
     run_insights_gleamed_from_thought_experiments()
     run_conclusion_summary()
     run_lessons_learned_prompt()
 
+    summary_state = StateManagerSummary.get_instance().state
     # Create the json that if someone called the HappyChoicesAI API it would return
     json_output = {
-        "introduction": state.final_summary.introduction,
-        "chosen_best_action_summary": state.final_summary.chosen_best_action_summary,
-        "themes": state.final_summary.themes,
-        "historical_examples_summary": state.final_summary.historical_examples_summary,
-        "insights": state.final_summary.insights,
-        "conclusion": state.final_summary.conclusion,
-        "lessons_learned": state.final_summary.lessons_learned,
+        "introduction": summary_state.introduction,
+        "chosen_best_action_summary": summary_state.chosen_best_action_summary,
+        "themes": summary_state.themes,
+        "historical_examples_summary": summary_state.historical_examples_summary,
+        "insights": summary_state.insights,
+        "conclusion": summary_state.conclusion,
+        "lessons_learned": summary_state.lessons_learned,
     }
     if markdown:
         run_create_markdown_format_for_all()
-        json_output["markdown_format"] = state.final_summary.markdown_format
+        json_output["markdown_format"] = summary_state.markdown
     return json_output
 
 
@@ -68,7 +76,7 @@ def run_introduction_prompt() -> str:
 
     log_it_sync(logger, custom_message=f"run_introduction_prompt: {output}", log_level="info")
     summary_state = StateManagerSummary.get_instance().state
-    summary_state.final_summary.introduction = output
+    summary_state.introduction = output
     return output
 
 
@@ -100,7 +108,7 @@ def run_summary_of_selected_thought_experiment(thought_experiment_dict: Dict[str
 
     log_it_sync(logger, custom_message=f"run_summary_of_selected_thought_experiment: {output}", log_level="info")
     summary_state = StateManagerSummary.get_instance().state
-    summary_state.final_summary.chosen_best_action_summary = output
+    summary_state.chosen_best_action_summary = output
     return output
 
 
@@ -125,7 +133,7 @@ def run_common_themes_prompt() -> str:
 
     log_it_sync(logger, custom_message=f"run_common_themes_prompt: {output}", log_level="info")
     summary_state = StateManagerSummary.get_instance().state
-    summary_state.final_summary.themes = output
+    summary_state.themes = output
     return output
 
 
@@ -153,7 +161,7 @@ def run_historical_examples_prompt_summary_prompt() -> str:
 
     log_it_sync(logger, custom_message=f"run_introduction_prompt: {output}", log_level="info")
     summary_state = StateManagerSummary.get_instance().state
-    summary_state.final_summary.historical_examples_summary = output
+    summary_state.historical_examples_summary = output
     return output
 
 
@@ -178,7 +186,7 @@ def run_insights_gleamed_from_thought_experiments() -> str:
 
     log_it_sync(logger, custom_message=f"run_introduction_prompt: {output}", log_level="info")
     summary_state = StateManagerSummary.get_instance().state
-    summary_state.final_summary.insights = output
+    summary_state.insights = output
     return output
 
 
@@ -202,7 +210,7 @@ def run_conclusion_summary() -> str:
 
     log_it_sync(logger, custom_message=f"run_introduction_prompt: {output}", log_level="info")
     summary_state = StateManagerSummary.get_instance().state
-    summary_state.final_summary.conclusion = output
+    summary_state.conclusion = output
     return output
 
 
@@ -214,7 +222,7 @@ def run_lessons_learned_prompt() -> str:
     :return: NA
     """
     state = StateManager.get_instance().state
-
+    summary_state = StateManagerSummary.get_instance().state
     prompt_template = lessons_learned_prompt()
     chain = prompt_template | llm
     pretty_thought_experiments_other = make_other_thought_experiments_pretty_normal()
@@ -223,16 +231,16 @@ def run_lessons_learned_prompt() -> str:
         "input_dilemma": state.situation,
         "thought_experiment_summary": pretty_thought_experiments_chosen,
         "other_thought_experiments": pretty_thought_experiments_other,
-        "historical_examples": state.final_summary.historical_examples_summary,
-        "common_themes": state.final_summary.themes,
-        "key_insights": state.final_summary.insights,
-        "conclusion": state.final_summary.conclusion,
+        "historical_examples": summary_state.historical_examples_summary,
+        "common_themes": summary_state.themes,
+        "key_insights": summary_state.insights,
+        "conclusion": summary_state.conclusion,
     }
     output = invoke_with_retry(chain, input_data=input_data)
 
     log_it_sync(logger, custom_message=f"run_introduction_prompt: {output}", log_level="info")
-    summary_state = StateManagerSummary.get_instance().state
-    summary_state.final_summary.lessons_learned = output
+
+    summary_state.lessons_learned = output
     return output
 
 
@@ -244,7 +252,7 @@ def run_create_markdown_format_for_all() -> str:
     :return: NA
     """
     state = StateManager.get_instance().state
-
+    summary_state = StateManagerSummary.get_instance().state
     prompt_template = create_markdown_format_for_all()
     chain = prompt_template | llm
     pretty_thought_experiments_other = make_other_thought_experiments_pretty_normal()
@@ -253,17 +261,17 @@ def run_create_markdown_format_for_all() -> str:
         "input_dilemma": state.situation,
         "thought_experiment_summary": pretty_thought_experiments_chosen,
         "other_thought_experiments": pretty_thought_experiments_other,
-        "historical_examples": state.final_summary.historical_examples_summary,
-        "common_themes": state.final_summary.themes,
-        "key_insights": state.final_summary.insights,
-        "conclusion": state.final_summary.conclusion,
-        "lessons_learned": state.final_summary.lessons_learned,
+        "historical_examples": summary_state.historical_examples_summary,
+        "common_themes": summary_state.themes,
+        "key_insights": summary_state.insights,
+        "conclusion": summary_state.conclusion,
+        "lessons_learned": summary_state.lessons_learned,
     }
     output = invoke_with_retry(chain, input_data=input_data)
 
     log_it_sync(logger, custom_message=f"run_introduction_prompt: {output}", log_level="info")
-    summary_state = StateManagerSummary.get_instance().state
-    summary_state.final_summary.markdown = output
+
+    summary_state.markdown = output
     return output
 
 

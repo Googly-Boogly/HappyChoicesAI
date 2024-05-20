@@ -12,7 +12,7 @@ logger = create_logger_error(
 )
 # Get the API key from the environment variable
 api_key = os.getenv("OPENAI_API_KEY")
-llm = ChatOpenAI(model="gpt-3.5-turbo-0125", temperature=0, api_key=api_key)
+llm = ChatOpenAI(model="gpt-4o", temperature=0, api_key=api_key)
 
 def create_prompt_template():
     return PromptTemplate(

@@ -15,7 +15,7 @@ load_dotenv()
 
 # Get the API key from the environment variable
 api_key = os.getenv("OPENAI_API_KEY")
-llm = ChatOpenAI(model="gpt-3.5-turbo-0125", temperature=0, api_key=api_key)
+llm = ChatOpenAI(model="gpt-4o", temperature=0, api_key=api_key)
 logger = create_logger_error(
     file_path=os.path.abspath(__file__), name_of_log_file="pick_action"
 )
@@ -111,12 +111,15 @@ def argue_best_action(
     :param other_thought_experiments: The other thought experiments
     :return: The argument for why the thought experiment is the best action and why it is not
     """
+    state = StateManager.get_instance().state
     prompt_template = get_argue_best_action_prompt()
     chain = prompt_template | llm
     output = chain.invoke(
         {
             "thought_experiment_1": thought_experiment_to_argue,
             "other_thought_experiments": other_thought_experiments,
+            "dilemma": state.situation,
+            "historical_examples": make_historical_examples_used_pretty_text(),
         }
     )
 
@@ -194,10 +197,13 @@ def make_all_thought_experiment_pretty_text_with_arguments() -> str:
         text += f"""
 Thought Experiment:
 {thought["summary"]}
+
 Arguments For:
 {thought["arguments_for"]}
+
 Arguments Against:
 {thought["arguments_against"]}
+
 ID: {thought["id"]}
 """
         text += "\n"
@@ -228,6 +234,7 @@ Output your answer in the following format:
         input_variables=["dilemma", "thought_experiment_1", "other_thought_experiments", "historical_examples"],
     )
 
+
 def get_decide_best_action_prompt() -> PromptTemplate:
     return PromptTemplate(
         template="""
@@ -246,3 +253,26 @@ Example output:
 """,
         input_variables=["all_thought_experiments"],
     )
+
+
+def make_historical_examples_used_pretty_text() -> str:
+    """
+    Will take in the historical examples used and make them into nice looking text that the LLM can read
+    :return: The historical examples in nice looking text
+    """
+    state = StateManager.get_instance().state
+    text = ""
+    for example in state.historical_examples:
+        text += f"""
+Historical Example:
+{example.situation}
+
+Action Taken:
+{example.action_taken}
+
+Reasoning:
+{example.reasoning}
+"""
+        text += "\n"
+    return text
+# Compare this snippet from src/tests/test_pick_action.py:

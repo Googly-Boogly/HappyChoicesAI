@@ -14,16 +14,17 @@ class HistoricalExample:
 
 @dataclass
 class SummaryAgentAllThoughtExperiments:
-    all_thought_experiments: str
-    conclusion: str
-    insights: str
-    historical_examples_summary: str
-    themes: str
-    chosen_best_action_summary: str
-    other_thought_experiments_summary: List[str]
-    introduction: str
-    lessons_learned: str
-    markdown: str
+    all_thought_experiments: str = ""
+    conclusion: str = ""
+    insights: str = ""
+    historical_examples_summary: str = ""
+    themes: str = ""
+    chosen_best_action_summary: str = ""
+    other_thought_experiments_summary: List[str] = field(default_factory=list)
+    introduction: str = ""
+    lessons_learned: str = ""
+    markdown: str = ""
+
 
 
 @dataclass

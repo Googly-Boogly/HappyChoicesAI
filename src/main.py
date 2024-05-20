@@ -5,7 +5,7 @@ from langchain_core.output_parsers import JsonOutputParser
 from langchain_core.prompts import PromptTemplate
 from langchain_openai import ChatOpenAI
 
-from HappyChoicesAI.ai_state import EthicistAIState, StateManager
+from HappyChoicesAI.ai_state import EthicistAIState, StateManager, StateManagerSummary
 from HappyChoicesAI.key_criteria import find_key_criteria
 from HappyChoicesAI.historical_examples import find_historical_examples
 from HappyChoicesAI.perform_thought_experiment import perform_thought_experiments
@@ -22,11 +22,11 @@ First thing to do tomorrow write test!
 """
 load_dotenv()
 logger = create_logger_error(
-    file_path=os.path.abspath(__file__), name_of_log_file="historical_examples"
+    file_path=os.path.abspath(__file__), name_of_log_file="main"
 )
 # Get the API key from the environment variable
 api_key = os.getenv("OPENAI_API_KEY")
-llm = ChatOpenAI(model="gpt-3.5-turbo-0125", temperature=0, api_key=api_key)
+llm = ChatOpenAI(model="gpt-4o", temperature=0, api_key=api_key)
 
 
 @benchmark_function
@@ -94,6 +94,7 @@ EXAMPLE:
 
     situation = dilemmas[0][0]
     state = StateManager.get_instance().state
+    summary_state = StateManagerSummary.get_instance().state
     state.situation = situation
     find_historical_examples()
     find_key_criteria()
@@ -104,17 +105,18 @@ EXAMPLE:
     markdown = True
     summarize_results(markdown=markdown)
 
-    log_it_sync(logger, custom_message=f"Final Summary: {state.final_summary.all_thought_experiments}")
-    log_it_sync(logger, custom_message=f"Final Summary: {state.final_summary.conclusion}")
-    log_it_sync(logger, custom_message=f"Final Summary: {state.final_summary.insights}")
-    log_it_sync(logger, custom_message=f"Final Summary: {state.final_summary.historical_examples_summary}")
-    log_it_sync(logger, custom_message=f"Final Summary: {state.final_summary.themes}")
-    log_it_sync(logger, custom_message=f"Final Summary: {state.final_summary.chosen_best_action_summary}")
-    log_it_sync(logger, custom_message=f"Final Summary: {state.final_summary.other_thought_experiments_summary}")
-    log_it_sync(logger, custom_message=f"Final Summary: {state.final_summary.introduction}")
-    log_it_sync(logger, custom_message=f"Final Summary: {state.final_summary.lessons_learned}")
+    log_it_sync(logger, custom_message=f"all_thought_experiments: {summary_state.all_thought_experiments}")
+    log_it_sync(logger, custom_message=f"conclusion: {summary_state.conclusion}")
+    log_it_sync(logger, custom_message=f"insights: {summary_state.insights}")
+    log_it_sync(logger, custom_message=f"historical_examples_summary: {summary_state.historical_examples_summary}")
+    log_it_sync(logger, custom_message=f"themes: {summary_state.themes}")
+    log_it_sync(logger, custom_message=f"chosen_best_action_summary: {summary_state.chosen_best_action_summary}")
+    log_it_sync(logger, custom_message=f"other_thought_experiments_summary: {summary_state.other_thought_experiments_summary}")
+    log_it_sync(logger, custom_message=f"introduction: {summary_state.introduction}")
+    log_it_sync(logger, custom_message=f"lessons_learned: {summary_state.lessons_learned}")
     if markdown:
-        log_it_sync(logger, custom_message=f"Final Summary: {state.final_summary.markdown}")
+        log_it_sync(logger, custom_message=f"markdown: {summary_state.markdown}")
+
 
 if __name__ == "__main__":
     main()

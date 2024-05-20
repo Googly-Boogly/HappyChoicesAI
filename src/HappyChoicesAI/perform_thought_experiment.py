@@ -15,7 +15,7 @@ load_dotenv()
 
 # Get the API key from the environment variable
 api_key = os.getenv("OPENAI_API_KEY")
-llm = ChatOpenAI(model="gpt-3.5-turbo-0125", temperature=0, api_key=api_key)
+llm = ChatOpenAI(model="gpt-4o", temperature=0, api_key=api_key)
 logger = create_logger_error(
     file_path=os.path.abspath(__file__), name_of_log_file="perform_thought_experiment"
 )

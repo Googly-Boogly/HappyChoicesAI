@@ -6,7 +6,7 @@ from HappyChoicesAI.summarize_result import create_markdown_format_for_all, \
 from global_code.langchain import invoke_with_retry
 from HappyChoicesAI.ai_state import HistoricalExample
 
-# from HappyChoicesAI.ai_state import StateManager
+from HappyChoicesAI.ai_state import StateManager, StateManagerSummary
 
 
 class TestRunHistorical(unittest.TestCase):
@@ -14,18 +14,10 @@ class TestRunHistorical(unittest.TestCase):
     def setUp(self):
         self.state = Mock()
         self.state.situation = "This is the dilemma."
-        self.state.final_summary.historical_examples_summary = "These are historical examples."
-        self.state.final_summary.themes = "These are themes."
-        self.state.final_summary.insights = "These are insights."
-        self.state.final_summary.conclusion = "This is the conclusion."
-        self.state.final_summary.lessons_learned = "These are lessons learned."
         self.state.historical_examples = [
-            HistoricalExample("This is the historical example.", "This is the relevance to the thought experiment.",
-                              "IDGA3F"),
-            HistoricalExample("This is the historical example.", "This is the relevance to the thought experiment.",
-                              "IDGAF")
+            HistoricalExample("This is the historical example.", "This is the relevance to the thought experiment.", "IDGA3F"),
+            HistoricalExample("This is the historical example.", "This is the relevance to the thought experiment.", "IDGAF")
         ]
-        # For these 2 functions make_chosen_thought_experiment_pretty_text, make_other_thought_experiments_pretty_normal
         self.state.thought_experiments = [
             {
                 "summary": "This is a summary.",
@@ -55,19 +47,27 @@ class TestRunHistorical(unittest.TestCase):
             }
         ]
         self.state.best_action = 1
-        self.state.final_summary = Mock()
+        self.state_summary = Mock()
+        self.state_summary.historical_examples_summary = "These are historical examples."
+        self.state_summary.themes = "These are themes."
+        self.state_summary.insights = "These are insights."
+        self.state_summary.conclusion = "This is the conclusion."
+        self.state_summary.lessons_learned = "These are lessons learned."
+
 
     @patch('HappyChoicesAI.summarize_result.StateManager.get_instance')
     @patch('HappyChoicesAI.summarize_result.llm')
     @patch('HappyChoicesAI.summarize_result.invoke_with_retry')
-    def test_run_summary_of_selected_thought_experiment(self, mock_invoke_with_retry, mock_llm, mock_get_instance):
+    @patch('HappyChoicesAI.summarize_result.StateManagerSummary.get_instance')
+    def test_run_historical_examples_prompt_summary_prompt(self, mock_get_instance_summary, mock_invoke_with_retry, mock_llm, mock_get_instance):
         mock_get_instance.return_value = Mock(state=self.state)
+        mock_get_instance_summary.return_value = Mock(state=self.state_summary)
         mock_invoke_with_retry.return_value = "This is the generated summary."
 
         result = run_historical_examples_prompt_summary_prompt()
 
         self.assertEqual(result, "This is the generated summary.")
-        self.state.final_summary.chosen_best_action_summary = "This is the generated summary."
+        self.assertEqual(self.state_summary.historical_examples_summary, "This is the generated summary.")
 
     def test_summary_of_selected_thought_experiment(self):
         template = historical_examples_prompt_summary_prompt()
