@@ -295,6 +295,7 @@ def get_analyze_criteria_changes_prompt() -> PromptTemplate:
     return PromptTemplate(
         template="""
 You are a world-renowned AI ethicist. You have been tasked to determine how the key criteria will change because of the proposed action.
+
 Given the input dilemma: {input_dilemma}
 
 The proposed action: {proposed_action}
@@ -356,6 +357,8 @@ The key criteria: {key_criteria}
 
 The proxies' impact: {proxies_impact}
 
-provide numerical estimates for the changes in suffering and happiness.""",
+provide numerical estimates for the changes in suffering and happiness.
+Provide your estimates using percentages for change. between -100% and 100%. Do your best in providing accurate estimates.
+""",
         input_variables=["input_dilemma", "key_criteria", "proposed_action", "proxies_impact"],
     )

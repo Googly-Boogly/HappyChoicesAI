@@ -5,3 +5,4 @@ logging:
   log_to_file: true
   log_directory: logs
 
+model_to_use: "gpt-4o"  # or "gpt-4-turbo"

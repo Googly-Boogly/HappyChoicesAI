@@ -64,7 +64,6 @@ def reason_about_dilemma(dilemma: HistoricalExample) -> bool:
     """
     Will use the LLM to reason about the current dilemma and the historical dilemma to determine if they are similar
     :param dilemma: The historical dilemma
-    :param input_dilemma: The current dilemma
     :return: Either True or False (if the dilemmas are similar)
     """
     prompt_template = create_prompt_template()

@@ -113,7 +113,9 @@ def argue_best_action(
     """
     state = StateManager.get_instance().state
     prompt_template = get_argue_best_action_prompt()
-    chain = prompt_template | llm
+    parser = JsonOutputParser()
+    chain = prompt_template | llm | parser
+
     output = chain.invoke(
         {
             "thought_experiment_1": thought_experiment_to_argue,
@@ -122,12 +124,10 @@ def argue_best_action(
             "historical_examples": make_historical_examples_used_pretty_text(),
         }
     )
-
-    # Turn the output into a JSON
-    try:
-        parsed_output = json.loads(output.content)
-        for_argument = parsed_output["for"]
-        against_argument = parsed_output["against"]
+    log_it_sync(logger, custom_message=f"type(chain): {type(output)}")
+    if isinstance(output, dict):
+        for_argument = output["for"]
+        against_argument = output["against"]
         log_it_sync(
             logger,
             custom_message=f"Arguments for the thought experiment: {for_argument}",
@@ -137,10 +137,7 @@ def argue_best_action(
             custom_message=f"Arguments against the thought experiment: {against_argument}",
         )
         return {"for": for_argument, "against": against_argument}
-
-    except (json.JSONDecodeError, KeyError, Exception) as e:
-        log_it_sync(logger, custom_message=f"Error: {e}", log_level="error")
-        return {}
+    return {}
 
 
 def decide_what_the_best_action_to_take_is() -> Dict[str, str]:
@@ -152,20 +149,16 @@ def decide_what_the_best_action_to_take_is() -> Dict[str, str]:
     state = StateManager.get_instance().state
     all_thought_experiments = make_all_thought_experiment_pretty_text_with_arguments()
     prompt_template = get_decide_best_action_prompt()
-    chain = prompt_template | llm
+    parser = JsonOutputParser()
+    chain = prompt_template | llm | parser
     output = chain.invoke(
         {
             "all_thought_experiments": all_thought_experiments,
         }
     )
-
-    try:
-        parsed_output = json.loads(output.content)
-        log_it_sync(logger, custom_message=f"Reasoning: {parsed_output['reasoning']}")
-        return parsed_output
-    except (json.JSONDecodeError, KeyError, Exception) as e:
-        log_it_sync(logger, custom_message=f"Error: {e}", log_level="error")
-        return {}
+    if isinstance(output, dict):
+        return output
+    return {}
 
 
 def make_other_thought_experiments_pretty_text(
@@ -225,6 +218,7 @@ The first thought experiment is as follows: {thought_experiment_1}
 
 Make the argument why the first thought experiment is not the best course of action and why it is.
 Your answer should be concise and to the point.
+ALWAYS output correct JSON format don't forget any commas or colons.
 Output your answer in the following format:
 {{
     "for": "Your argument for why the thought experiment is the best course of action",

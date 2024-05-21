@@ -1,0 +1,1 @@
+Have a pc from 1990 or later

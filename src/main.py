@@ -86,11 +86,12 @@ EXAMPLE:
 
     # chain = prompt_template | llm | output_parser
     # output = chain.invoke({"dilemma": dilemmas[0][0]})
-    #
+    # log_it_sync(logger, custom_message=f"Output: {type(output)}")
     # log_it_sync(logger, custom_message=f"Output: {output['actions']}")
 
     # situation: str = input_situation()
 
+    # raise NotImplemented
 
     situation = dilemmas[0][0]
     state = StateManager.get_instance().state
