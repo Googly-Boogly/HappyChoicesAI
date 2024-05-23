@@ -15,6 +15,8 @@ HappyChoicesAI is designed to assist users in resolving ethical dilemmas by leve
     Step 2: The AI searches for parallels between the input dilemma and existing historical dilemmas.
     Step 3: Any relationships or relevant examples are saved to the state for further analysis.
 
+![Historic Dilemmas Flow](/docs/img/AI_Historic_examples.jpg)
+
 ### Key Criteria Determination
 
     Step 4: The AI identifies key criteria for the input dilemma, which may include:
@@ -26,6 +28,8 @@ HappyChoicesAI is designed to assist users in resolving ethical dilemmas by leve
         Ethical best practices that may be breached or require careful consideration
     Step 5: These criteria are saved to the state.
 
+![Key Criteria Flow](/docs/img/AI_Key_Criteria.jpg)
+
 ### Action Determination and Thought Experiments
 
     Step 6: The AI reviews all previously gathered details and determines potential actions to be taken.
@@ -35,6 +39,8 @@ HappyChoicesAI is designed to assist users in resolving ethical dilemmas by leve
         Determine the percentage change for each criterion (future enhancement with a custom ML model).
         Evaluate the impact on proxies for Happiness and Suffering, first determining how and why these proxies will change, then assessing the actual impact or changes (future enhancement with a custom ML model).
     Step 8: Each thought experiment is summarized, gathering all collected information into one document.
+
+![Thought Experiment Flow](/docs/img/Thought_Experiment_Cognitive.jpg)
 
 ### Decision-Making
 
@@ -54,6 +60,8 @@ HappyChoicesAI is designed to assist users in resolving ethical dilemmas by leve
     Step 16: Create a final conclusion for the entire process.
     Step 17: Identify key lessons the AI learned for future system improvements.
     Step 18: Option to receive the final document in either JSON or markdown format.
+
+![Summarize Flow](/docs/img/AI_Summarize.jpg)
 
 ### Conclusion
 
