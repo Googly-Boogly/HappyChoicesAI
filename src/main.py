@@ -97,6 +97,7 @@ EXAMPLE:
     # raise NotImplemented
 
     situation = dilemmas[1][0]
+    situation = input("Enter a situation: ")
     state = StateManager.get_instance().state
     summary_state = StateManagerSummary.get_instance().state
     state.situation = situation
