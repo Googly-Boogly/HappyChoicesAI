@@ -100,18 +100,18 @@ class Database:
         self.password = password
 
     def get_connection(self):
-        # try:
-        connection = mysql.connector.connect(
-            host=self.host,
-            database=self.database,
-            user=self.user,
-            password=self.password,
-        )
-        if connection.is_connected():
-            return connection
-        # except Error as e:
-        #     print(f"Error while connecting to MySQL: {e}")
-        #     return None
+        try:
+            connection = mysql.connector.connect(
+                host=self.host,
+                database=self.database,
+                user=self.user,
+                password=self.password,
+            )
+            if connection.is_connected():
+                return connection
+        except Error as e:
+            print(f"Error while connecting to MySQL: {e}")
+            return None
 
     def get_all_historical_examples(self) -> List[HistoricalExample]:
         connection = self.get_connection()

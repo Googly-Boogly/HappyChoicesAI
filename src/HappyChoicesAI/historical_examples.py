@@ -61,12 +61,11 @@ def reason_and_add_to_state(dilemma: HistoricalExample):
 
 def get_historical_examples() -> List[HistoricalExample]:
     # Placeholder for actual retrieval logic
-    try:
-        db = Database(
-            host="mysql", database="happychoices", user="root", password="password"
-        )
-    except Exception as e:
-        log_it_sync(logger, custom_message=f"Probably running in python. Docker is preferred", log_level="error")
+
+    db = Database(
+        host="mysql", database="happychoices", user="root", password="password"
+    )
+    if db is None:
         return current_historic_examples_used_when_running_with_python()
     historical_examples: List[HistoricalExample] = db.get_all_historical_examples()
 
