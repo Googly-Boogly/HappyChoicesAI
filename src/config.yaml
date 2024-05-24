@@ -1,8 +1,10 @@
 logging:
   enabled: true
-  level: DEBUG
+  level: INFO
   log_to_console: true
   log_to_file: true
   log_directory: logs
 
-model_to_use: "gpt-4o"  # or "gpt-4-turbo"
+model_to_use: "gpt-4-turbo"  # or "gpt-4-turbo" or "gpt-4o"
+
+thread_count: 6

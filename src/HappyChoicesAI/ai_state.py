@@ -35,6 +35,11 @@ class EthicistAIState:
     thought_experiments: List[Dict[str, str or int]] = field(default_factory=list)
     best_action: Optional[int] = None  # This is the id of the best action
 
+@dataclass
+class ModelUsedAndThreadCountState:
+    model_used: str = ""
+    thread_count: int = 0
+
 
 class StateManager:
     _instance = None
@@ -68,6 +73,23 @@ class StateManagerSummary:
         else:
             self.state = SummaryAgentAllThoughtExperiments()
             StateManagerSummary._instance = self
+
+
+class ModelUsedAndThreadCount:
+    _instance = None
+
+    @staticmethod
+    def get_instance():
+        if ModelUsedAndThreadCount._instance is None:
+            ModelUsedAndThreadCount()
+        return ModelUsedAndThreadCount._instance
+
+    def __init__(self):
+        if ModelUsedAndThreadCount._instance is not None:
+            raise Exception("This class is a singleton!")
+        else:
+            self.state = ModelUsedAndThreadCountState()
+            ModelUsedAndThreadCount._instance = self
 
 
 class Database:

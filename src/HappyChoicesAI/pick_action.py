@@ -1,13 +1,15 @@
 import json
 import os
+import threading
 from typing import Dict, List, Tuple
+import multiprocessing
 
 from dotenv import load_dotenv
 from langchain_core.output_parsers import JsonOutputParser
 from langchain_core.prompts import PromptTemplate
 from langchain_openai import ChatOpenAI
 
-from HappyChoicesAI.ai_state import EthicistAIState, StateManager
+from HappyChoicesAI.ai_state import EthicistAIState, ModelUsedAndThreadCount, StateManager
 from global_code.langchain import invoke_with_retry, retry_fail_json_output
 from global_code.helpful_functions import create_logger_error, log_it_sync
 
@@ -15,38 +17,16 @@ load_dotenv()
 
 # Get the API key from the environment variable
 api_key = os.getenv("OPENAI_API_KEY")
-llm = ChatOpenAI(model="gpt-4o", temperature=0, api_key=api_key)
+random_state = ModelUsedAndThreadCount.get_instance()
+thread_count = random_state.state.thread_count
+model_to_use = random_state.state.model_used
+
+llm = ChatOpenAI(model=model_to_use, temperature=0, api_key=api_key)
 logger = create_logger_error(
     file_path=os.path.abspath(__file__), name_of_log_file="pick_action"
 )
 """
-TODO: Implement the pick_best_action function that will determine the best action based on the outcomes of the thought experiments.
-This is what the input to the decide_what_the_best_action_to_take_is function should look like:
-{
-  "dilemma": "Describe the ethical dilemma here",
-  "thought_experiments": [
-    {
-      "id": 1,
-      "description": "Description of thought experiment 1",
-      "arguments_for": "Arguments why this is the best option",
-      "arguments_against": "Arguments why this is not the best option"
-    },
-    {
-      "id": 2,
-      "description": "Description of thought experiment 2",
-      "arguments_for": "Arguments why this is the best option",
-      "arguments_against": "Arguments why this is not the best option"
-    }
-    // Add more thought experiments as needed
-  ]
-}
-The LLM should than output it's reasoning why it chose the best action
-Than actually choose the best action example output:
-{
-    "id": 1,
-    "reasoning": "blah blAH blah"
-}
-The pick_best_action function is really messy right now fix it.
+
 """
 
 
@@ -68,37 +48,55 @@ def pick_best_action() -> None:
     for i in range(len(state.thought_experiments)):
         state.thought_experiments[i]["id"] = i + 1
 
-    runner = 0
-    while runner < len(state.thought_experiments):
-        thought_experiment = state.thought_experiments[runner]["summary"]
+    total_thought_experiments = len(state.thought_experiments)
 
-        # get the other thought experiments into a list of strings with their summaries
-        other_thought_experiments_dict = (
-                state.thought_experiments[:runner]
-                + state.thought_experiments[runner + 1:])
-        other_thought_experiments_list = []
-        for thought in other_thought_experiments_dict:
-            other_thought_experiments_list.append(thought["summary"])
+    threads = []
 
-        other_thought_experiments_llm_ready_text: str = make_other_thought_experiments_pretty_text(
-            other_thought_experiments_list)
-        for_and_against: Dict[str, str] = retry_fail_json_output(argue_best_action, thought_experiment,
-                                                                 other_thought_experiments_llm_ready_text)
+    for action in range(total_thought_experiments):
+        thread = threading.Thread(target=argue_best_action_all_thought_experiments, args=(action,))
+        threads.append(thread)
+        thread.start()
 
-        if for_and_against != {}:
-            state.thought_experiments[runner]["arguments_for"] = for_and_against["for"]
-            state.thought_experiments[runner]["arguments_against"] = for_and_against["against"]
-        else:
-            state.thought_experiments[runner]["arguments_for"] = ""
-            state.thought_experiments[runner]["arguments_against"] = ""
+    for thread in threads:
+        thread.join()
 
-        runner += 1
+    log_it_sync(logger, custom_message=f"results: {state.thought_experiments}", log_level="debug")
     best_action: Dict[str, str] = retry_fail_json_output(decide_what_the_best_action_to_take_is)
 
     # check if key in dict
 
     if "id" in best_action:
+        log_it_sync(
+            logger,
+            custom_message=f"Picked best action: {True}",
+            log_level="info"
+        )
         state.best_action = best_action["id"]
+
+
+def argue_best_action_all_thought_experiments(id_of_thought_experiment: int):
+    state = StateManager.get_instance().state
+
+    thought_experiment = state.thought_experiments[id_of_thought_experiment]["summary"]
+
+    # Get the other thought experiments into a list of strings with their summaries
+    other_thought_experiments_dict = (
+        state.thought_experiments[:id_of_thought_experiment]
+        + state.thought_experiments[id_of_thought_experiment + 1:]
+    )
+    other_thought_experiments_list = [thought["summary"] for thought in other_thought_experiments_dict]
+
+    other_thought_experiments_llm_ready_text: str = make_other_thought_experiments_pretty_text(
+        other_thought_experiments_list)
+    for_and_against: Dict[str, str] = retry_fail_json_output(argue_best_action, thought_experiment,
+                                                             other_thought_experiments_llm_ready_text)
+
+    if for_and_against:
+        state.thought_experiments[id_of_thought_experiment]["arguments_for"] = for_and_against["for"]
+        state.thought_experiments[id_of_thought_experiment]["arguments_against"] = for_and_against["against"]
+    else:
+        state.thought_experiments[id_of_thought_experiment]["arguments_for"] = ""
+        state.thought_experiments[id_of_thought_experiment]["arguments_against"] = ""
 
 
 def argue_best_action(
@@ -124,19 +122,23 @@ def argue_best_action(
             "historical_examples": make_historical_examples_used_pretty_text(),
         }
     )
-    log_it_sync(logger, custom_message=f"type(chain): {type(output)}")
+    log_it_sync(logger, custom_message=f"type(chain): {type(output)}", log_level="debug")
     if isinstance(output, dict):
         for_argument = output["for"]
         against_argument = output["against"]
         log_it_sync(
             logger,
             custom_message=f"Arguments for the thought experiment: {for_argument}",
+            log_level="debug"
         )
         log_it_sync(
             logger,
             custom_message=f"Arguments against the thought experiment: {against_argument}",
+            log_level="debug"
         )
+        log_it_sync(logger, custom_message=f"Arguments against the thought experiment: passed", log_level="info")
         return {"for": for_argument, "against": against_argument}
+    log_it_sync(logger, custom_message=f"Arguments against the thought experiment: failed", log_level="info")
     return {}
 
 
@@ -157,7 +159,13 @@ def decide_what_the_best_action_to_take_is() -> Dict[str, str]:
         }
     )
     if isinstance(output, dict):
+        log_it_sync(logger, custom_message=f"decide_what_the_best_action_to_take_is: {output}",
+                    log_level="debug")
+        log_it_sync(logger, custom_message=f"decide_what_the_best_action_to_take_is: {True}",
+                    log_level="info")
         return output
+    log_it_sync(logger, custom_message=f"decide_what_the_best_action_to_take_is: {False}",
+                log_level="info")
     return {}
 
 
@@ -206,7 +214,7 @@ ID: {thought["id"]}
 def get_argue_best_action_prompt() -> PromptTemplate:
     return PromptTemplate(
         template="""
-You are a world-renowned AI ethicist. You have been tasked to argue why the first thought experiment is the best course of action and why it is not.
+You are a world-renowned utilitarian AI ethicist. You have been tasked to argue why the first thought experiment is the best course of action and why it is not.
 
 Dilemma: {dilemma}
 
@@ -232,7 +240,7 @@ Output your answer in the following format:
 def get_decide_best_action_prompt() -> PromptTemplate:
     return PromptTemplate(
         template="""
-You are a world-renowned AI ethicist. You have been tasked to determine the best course of action based off of all of the thought experiments and their arguments.
+You are a world-renowned AI utilitarian ethicist. You have been tasked to determine the best course of action based off of all of the thought experiments and their arguments.
 
 All Thought Experiments:
 {all_thought_experiments}

@@ -3,20 +3,25 @@ import os
 import time
 from typing import Any, Callable, Dict, List, Optional, Union
 
+import openai
 from dotenv import load_dotenv
 from langchain_core.output_parsers import JsonOutputParser
 from langchain_core.prompts import PromptTemplate
 from langchain_openai import ChatOpenAI
 
-from global_code.helpful_functions import create_logger_error, log_it_sync
+from HappyChoicesAI.ai_state import ModelUsedAndThreadCount
+from global_code.helpful_functions import CustomError, create_logger_error, log_it_sync
 
 load_dotenv()
 logger = create_logger_error(
-    file_path=os.path.abspath(__file__), name_of_log_file="historical_examples"
+    file_path=os.path.abspath(__file__), name_of_log_file="langchain"
 )
 # Get the API key from the environment variable
 api_key = os.getenv("OPENAI_API_KEY")
-llm = ChatOpenAI(model="gpt-3.5-turbo-0125", temperature=0, api_key=api_key)
+random_state = ModelUsedAndThreadCount.get_instance()
+thread_count = random_state.state.thread_count
+model_to_use = random_state.state.model_used
+llm = ChatOpenAI(model=model_to_use, temperature=0, api_key=api_key)
 
 
 def single_llm_chain(prompt: str, input_variables: List[str]) -> str:
@@ -206,7 +211,19 @@ def retry_fail_json_output(func: Callable, *args, **kwargs) -> Dict:
                 return output
             else:
                 raise ValueError("Output is not a JSON object.")
+        except openai.APIError as e:
+            # Handle API error here, e.g. retry or log
+            log_it_sync(logger, custom_message=f"OpenAI API returned an API Error Attempt: {attempt + 1}: {e}",
+                        log_level="error")
+            time.sleep(1.0)
+        except openai.RateLimitError as e:
+            # Handle rate limit error (we recommend using exponential backoff)
+            log_it_sync(logger, custom_message=f"OpenAI API request exceeded rate limit: Attempt: {attempt + 1}: {e}",
+                        log_level="error")
+            time.sleep(1.0)
         except Exception as e:
+            if attempt == 2:
+                raise CustomError(f"Error on attempt {attempt + 1}: {e}")
             log_it_sync(logger, custom_message=f"Error on attempt {attempt + 1}: {e}", log_level="error")
             time.sleep(1.0)
     return {}

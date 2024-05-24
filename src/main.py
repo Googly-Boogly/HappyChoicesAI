@@ -1,21 +1,17 @@
 import os
+import time
 
 from dotenv import load_dotenv
 from langchain_core.output_parsers import JsonOutputParser
 from langchain_core.prompts import PromptTemplate
 from langchain_openai import ChatOpenAI
+from HappyChoicesAI.ai_state import ModelUsedAndThreadCount, StateManager, StateManagerSummary
+from global_code.helpful_functions import create_logger_error, load_config, log_it_sync, benchmark_function
+yaml_config = load_config()
+random_state = ModelUsedAndThreadCount.get_instance()
+random_state.state.model_used = yaml_config["model_to_use"]
+random_state.state.thread_count = int(yaml_config["thread_count"])
 
-from HappyChoicesAI.ai_state import EthicistAIState, StateManager, StateManagerSummary
-from HappyChoicesAI.key_criteria import find_key_criteria
-from HappyChoicesAI.historical_examples import find_historical_examples
-from HappyChoicesAI.perform_thought_experiment import perform_thought_experiments
-from HappyChoicesAI.pick_action import pick_best_action
-from HappyChoicesAI.summarize_result import summarize_results
-from global_code.langchain import process_prompt, toggle_conversation_history
-from global_code.helpful_functions import benchmark_function
-import time
-
-from global_code.helpful_functions import create_logger_error, log_it_sync
 
 """
 First thing to do tomorrow write test!
@@ -26,12 +22,19 @@ logger = create_logger_error(
 )
 # Get the API key from the environment variable
 api_key = os.getenv("OPENAI_API_KEY")
-llm = ChatOpenAI(model="gpt-4o", temperature=0, api_key=api_key)
 
 
 @benchmark_function
 def main():
+    from HappyChoicesAI.historical_examples import find_historical_examples
+    from HappyChoicesAI.key_criteria import find_key_criteria
+    from HappyChoicesAI.perform_thought_experiment import perform_thought_experiments
+    from HappyChoicesAI.pick_action import pick_best_action
+    from HappyChoicesAI.summarize_result import summarize_results
+
     time.sleep(5)
+
+    llm = ChatOpenAI(model=yaml_config["model_to_use"], temperature=0, api_key=api_key)
     dilemmas = [
         (
             "An autonomous vehicle must make a decision in a scenario where it can either swerve to avoid hitting a pedestrian but risk the safety of its passengers, or stay on course and potentially harm the pedestrian.",
@@ -93,7 +96,7 @@ EXAMPLE:
 
     # raise NotImplemented
 
-    situation = dilemmas[0][0]
+    situation = dilemmas[1][0]
     state = StateManager.get_instance().state
     summary_state = StateManagerSummary.get_instance().state
     state.situation = situation
@@ -103,18 +106,23 @@ EXAMPLE:
     perform_thought_experiments()
 
     pick_best_action()
-    markdown = True
+    markdown = False
     summarize_results(markdown=markdown)
 
-    log_it_sync(logger, custom_message=f"all_thought_experiments: {summary_state.all_thought_experiments}")
-    log_it_sync(logger, custom_message=f"conclusion: {summary_state.conclusion}")
-    log_it_sync(logger, custom_message=f"insights: {summary_state.insights}")
-    log_it_sync(logger, custom_message=f"historical_examples_summary: {summary_state.historical_examples_summary}")
-    log_it_sync(logger, custom_message=f"themes: {summary_state.themes}")
-    log_it_sync(logger, custom_message=f"chosen_best_action_summary: {summary_state.chosen_best_action_summary}")
-    log_it_sync(logger, custom_message=f"other_thought_experiments_summary: {summary_state.other_thought_experiments_summary}")
+    # failing
+    # log_it_sync(logger, custom_message=f"all_thought_experiments: {summary_state.all_thought_experiments}")
     log_it_sync(logger, custom_message=f"introduction: {summary_state.introduction}")
+    log_it_sync(logger, custom_message=f"chosen_best_action_summary: {summary_state.chosen_best_action_summary}")
+    log_it_sync(logger,
+                custom_message=f"other_thought_experiments_summary: {summary_state.other_thought_experiments_summary}")
+    log_it_sync(logger, custom_message=f"historical_examples_summary: {summary_state.historical_examples_summary}")
+    log_it_sync(logger, custom_message=f"historical_examples_summary: {summary_state.historical_examples_summary}")
+    log_it_sync(logger, custom_message=f"insights: {summary_state.insights}")
+
+    log_it_sync(logger, custom_message=f"themes: {summary_state.themes}")
+
     log_it_sync(logger, custom_message=f"lessons_learned: {summary_state.lessons_learned}")
+    log_it_sync(logger, custom_message=f"conclusion: {summary_state.conclusion}")
     if markdown:
         log_it_sync(logger, custom_message=f"markdown: {summary_state.markdown}")
 

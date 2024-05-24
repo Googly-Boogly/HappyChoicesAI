@@ -3,7 +3,7 @@ from langchain_openai import ChatOpenAI
 from langchain_core.prompts import PromptTemplate
 from dotenv import load_dotenv
 import os
-from HappyChoicesAI.ai_state import StateManager
+from HappyChoicesAI.ai_state import ModelUsedAndThreadCount, StateManager
 from global_code.helpful_functions import log_it_sync, create_logger_error
 
 load_dotenv()
@@ -12,12 +12,13 @@ logger = create_logger_error(
 )
 # Get the API key from the environment variable
 api_key = os.getenv("OPENAI_API_KEY")
-llm = ChatOpenAI(model="gpt-4o", temperature=0, api_key=api_key)
+model_to_use = ModelUsedAndThreadCount.get_instance().state.model_used
+llm = ChatOpenAI(model=model_to_use, temperature=0, api_key=api_key)
 
 def create_prompt_template():
     return PromptTemplate(
         template="""
-You are a world-renowned AI ethicist. You have been tasked to determine the key ethical criteria relevant to utilitarian ethics in the following situation: {dilemma}.
+You are a world-renowned AI utilitarian ethicist. You have been tasked to determine the key ethical criteria relevant to utilitarian ethics in the following situation: {dilemma}.
 
 ### Examples:
 
@@ -34,6 +35,7 @@ Situation: {dilemma}
         input_variables=["dilemma"],
     )
 
+
 def find_key_criteria():
     """
     Analyzes the situation to identify key ethical criteria relevant to utilitarian ethics.
@@ -44,5 +46,6 @@ def find_key_criteria():
     chain = prompt_template | llm
     output = chain.invoke({"dilemma": state.situation})
     criteria = output.content
-    log_it_sync(logger, custom_message=f"Criteria: {criteria}")
+    log_it_sync(logger, custom_message=f"Criteria: {criteria}", log_level="debug")
     state.criteria = criteria
+    log_it_sync(logger, custom_message=f"find_key_criteria check: {True if output != '' else False}", log_level="info")
