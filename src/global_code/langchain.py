@@ -199,6 +199,7 @@ def invoke_with_retry(chain: Any, input_data: Dict[str, Any], max_retries: int =
 def retry_fail_json_output(func: Callable, *args, **kwargs) -> Dict:
     """
     Retries the function call with JSON output parsing if the output is not a JSON object. Or empty JSON
+    This function is used to handle OpenAI API errors and rate limit errors.
     :param func: The function to call.
     :param args: The positional arguments for the function.
     :param kwargs: The keyword arguments for the function.
