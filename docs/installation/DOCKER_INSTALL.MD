@@ -1,6 +1,7 @@
 ## HappyChoicesAI Docker Installation Guide
 
 Follow these steps to install and set up HappyChoicesAI:
+
 Prerequisites
 
 Ensure you have Docker installed on your machine. Refer to the official Docker documentation for installation instructions:
@@ -38,5 +39,7 @@ Execute the following command to build and run the Docker container:
 
 
 ```bash
-docker-compose up --build
+docker-compose build
+docker-compose up -d mysql
+docker-compose run app
 ```

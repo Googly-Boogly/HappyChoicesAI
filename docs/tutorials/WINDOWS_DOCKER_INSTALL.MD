@@ -46,7 +46,9 @@ Edit the .env and config.yaml files with your preferred editor.
 Run the Docker-Compose command:
 
 ```cmd
-docker-compose up --build
+docker-compose build
+docker-compose up -d mysql
+docker-compose run app
 ```
 
 That's it now you can use HappyChoicesAI on Windows!

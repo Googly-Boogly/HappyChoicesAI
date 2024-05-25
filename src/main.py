@@ -97,7 +97,8 @@ EXAMPLE:
     # raise NotImplemented
 
     situation = dilemmas[1][0]
-    situation = input("Enter a situation: ")
+    # situation = input("Enter a situation: ")
+    situation = "There is a person on life support, however, the family does not have the money to keep them on life support. The AI system has to help the family make a decision on what to do."
     state = StateManager.get_instance().state
     summary_state = StateManagerSummary.get_instance().state
     state.situation = situation

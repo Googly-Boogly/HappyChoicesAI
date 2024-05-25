@@ -32,7 +32,9 @@ HappyChoicesAI is an AI-driven utilitarian ethicist agent designed to help users
 
 4. **Run the Docker Container**:
     ```bash
-    docker-compose up --build
+    docker-compose build
+    docker-compose up -d mysql
+    docker-compose run app
     ```
 
 ### Python Installation

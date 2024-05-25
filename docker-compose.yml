@@ -20,6 +20,8 @@ services:
       MYSQL_USER: root
       MYSQL_PASSWORD: password
       MYSQL_DATABASE: happychoices
+#    stdin_open: true # Keep the container open to receive input
+#    tty: true        # Allocate a pseudo-TTY
 
 volumes:
   mysql_data:
