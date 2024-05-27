@@ -97,9 +97,14 @@ EXAMPLE:
     # raise NotImplemented
 
     situation = dilemmas[1][0]
-    # situation = input("Enter a situation: ")
-    situation = "There is a person on life support, however, the family does not have the money to keep them on life support. The AI system has to help the family make a decision on what to do."
-    situation = "A medical AI system is being used to diagnose patients in a hospital. One day, the AI detects a rare but serious condition in a patient. However, the AI's confidence in the diagnosis is only 60%, and the recommended treatment is highly invasive and carries significant risks. The medical team must decide whether to follow the AI's recommendation and proceed with the invasive treatment or to seek additional opinions, which could delay treatment and worsen the patient's condition if the AI's diagnosis is correct."
+    situation = input("Enter a situation: ")
+    markdown_output = input("Do you want the output in markdown? (y/n): ")
+    markdown = False
+    if markdown_output.lower() == "y":
+        markdown = True
+
+    # situation = "There is a person on life support, however, the family does not have the money to keep them on life support. The AI system has to help the family make a decision on what to do."
+    # situation = "A medical AI system is being used to diagnose patients in a hospital. One day, the AI detects a rare but serious condition in a patient. However, the AI's confidence in the diagnosis is only 60%, and the recommended treatment is highly invasive and carries significant risks. The medical team must decide whether to follow the AI's recommendation and proceed with the invasive treatment or to seek additional opinions, which could delay treatment and worsen the patient's condition if the AI's diagnosis is correct."
     # situation = "An autonomous drone is being used for surveillance in a conflict zone to gather intelligence and ensure the safety of troops. During a routine surveillance mission, the drone spots a group of civilians in an area known to be used by enemy combatants. The drone must decide whether to continue surveillance, risking the civilians' exposure to enemy forces, or to retreat to avoid detection, potentially losing critical intelligence."
     state = StateManager.get_instance().state
     summary_state = StateManagerSummary.get_instance().state
@@ -110,7 +115,7 @@ EXAMPLE:
     perform_thought_experiments()
 
     pick_best_action()
-    markdown = True
+
     summarize_results(markdown=markdown)
 
     # failing
