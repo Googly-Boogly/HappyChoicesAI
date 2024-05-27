@@ -146,7 +146,6 @@ def decide_what_the_best_action_to_take_is() -> Dict[str, str]:
     """
     The LLM will take in the best action determined and the all of the context that was used to get too that
     action and summarize the results
-    :param state: EthicistAIState object containing the chosen best action
     """
     state = StateManager.get_instance().state
     all_thought_experiments = make_all_thought_experiment_pretty_text_with_arguments()
@@ -164,6 +163,8 @@ def decide_what_the_best_action_to_take_is() -> Dict[str, str]:
         log_it_sync(logger, custom_message=f"decide_what_the_best_action_to_take_is: {True}",
                     log_level="info")
         return output
+    log_it_sync(logger, custom_message=f"decide_what_the_best_action_to_take_is Output: {output}",
+                log_level="info")
     log_it_sync(logger, custom_message=f"decide_what_the_best_action_to_take_is: {False}",
                 log_level="info")
     return {}

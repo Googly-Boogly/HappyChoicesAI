@@ -71,7 +71,7 @@ class TestRunHistorical(unittest.TestCase):
 
     def test_summary_of_selected_thought_experiment(self):
         template = historical_examples_prompt_summary_prompt()
-        self.assertEqual(template.template, """You are a world renowned AI ethicist. You have been tasked with summarizing the historical examples used and their relevance to the thought experiments.
+        self.assertEqual(template.template, """You are a world renowned AI utilitarian ethicist. You have been tasked with summarizing the historical examples used and their relevance to the thought experiments.
         
 Dilemma:
 {input_dilemma}

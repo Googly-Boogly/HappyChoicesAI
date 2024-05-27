@@ -210,8 +210,6 @@ def retry_fail_json_output(func: Callable, *args, **kwargs) -> Dict:
             output = func(*args, **kwargs)
             if isinstance(output, dict) and output != {}:
                 return output
-            else:
-                raise ValueError("Output is not a JSON object.")
         except openai.APIError as e:
             # Handle API error here, e.g. retry or log
             log_it_sync(logger, custom_message=f"OpenAI API returned an API Error Attempt: {attempt + 1}: {e}",

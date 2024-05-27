@@ -85,11 +85,11 @@ Common Themes:
 Key Insights:
 {key_insights}
 
-Comprehensive Conclusion:
-{conclusion}
-
 Lessons Learned:
 {lessons_learned}
 
-You need to create a markdown format for all of the details provided.
+Comprehensive Conclusion:
+{conclusion}
+
+You need to create a markdown format for all of the details provided. The markdown format should follow the provided structure. Ensure to provide an introduction, summary of the thought experiments, historical examples, common themes, key insights, lessons learned, and a comprehensive conclusion.
 """)

@@ -68,7 +68,7 @@ class TestRunInsights(unittest.TestCase):
 
     def test_summary_of_selected_thought_experiment(self):
         template = insights_gleamed_from_thought_experiments()
-        self.assertEqual(template.template, """You are a world renowned AI ethicist. You have been tasked with generating key insights gleaned from all the thought experiments.
+        self.assertEqual(template.template, """You are a world renowned AI utilitarian ethicist. You have been tasked with generating key insights gleaned from all the thought experiments.
 
 Dilemma:
 {input_dilemma}

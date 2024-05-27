@@ -1,5 +1,6 @@
-FAQ
-General Questions
+## FAQ
+
+### General Questions
 
     What is the purpose of this project?
     The purpose of this project is to help developers and ethicists tackle difficult ethical dilemmas in AI.
@@ -13,7 +14,7 @@ General Questions
     How can I get involved?
     You can get involved by referring to the Contribution guide and submitting a pull request.
 
-Install
+### Install
 
     How do I install the necessary software for this project?
         Refer to the Python Install guide for python installation instructions.
@@ -22,7 +23,7 @@ Install
     What are the system requirements for this project?
         A PC with the necessary software installed as per the installation guides.
 
-Usage
+### Usage
 
     How do I get started with using this project?
         Refer to the Usage Guide for step-by-step instructions on getting started.
@@ -30,7 +31,7 @@ Usage
     Are there any sample projects or examples?
         Yes, you can find sample projects and examples in the Examples section.
 
-Development
+### Development
 
     What coding standards does this project follow?
         PEP 8 for Python code:
@@ -45,7 +46,7 @@ Development
             Use the helpful_functions.py file inside src/global_code.
             Use the logger object to log messages at different levels.
 
-Troubleshooting
+### Troubleshooting
 
     What should I do if I encounter an error?
         Refer to the Troubleshooting guide for common issues and solutions.
@@ -53,7 +54,7 @@ Troubleshooting
     Where can I get help if the troubleshooting guide doesn't solve my issue?
         Reach out to the community on Discord.
 
-Additional Questions
+### Additional Questions
 
     How often is this project updated?
         This project is regularly updated. You can check the latest updates in the Changelog.

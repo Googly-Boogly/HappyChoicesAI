@@ -70,7 +70,7 @@ class TestRunConclusion(unittest.TestCase):
 
     def test_conclusion_summary(self):
         template = conclusion_summary()
-        self.assertEqual(template.template, """You are a world renowned AI ethicist. You have been tasked with creating a comprehensive conclusion based on all provided sections.
+        self.assertEqual(template.template, """You are a world renowned AI utilitarian ethicist. You have been tasked with creating a comprehensive conclusion based on all provided sections.
 
 Dilemma:
 {input_dilemma}     

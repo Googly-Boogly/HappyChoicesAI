@@ -471,7 +471,7 @@ Thought Experiment that was chosen:
 Other Thought Experiments:
 {other_thought_experiments}
 
-You need to identify and describe common themes from all the thought experiments. Include any overarching trends or significant findinds.
+You need to identify and describe common themes from all the thought experiments. Include any overarching trends or significant findings.
 """,
         input_variables=["thought_experiment_chosen", "other_thought_experiments", "input_dilemma"],
     )
@@ -636,13 +636,13 @@ Common Themes:
 Key Insights:
 {key_insights}
 
-Comprehensive Conclusion:
-{conclusion}
-
 Lessons Learned:
 {lessons_learned}
 
-You need to create a markdown format for all of the details provided.
+Comprehensive Conclusion:
+{conclusion}
+
+You need to create a markdown format for all of the details provided. The markdown format should follow the provided structure. Ensure to provide an introduction, summary of the thought experiments, historical examples, common themes, key insights, lessons learned, and a comprehensive conclusion.
 """,
         input_variables=["input_dilemma", "thought_experiment_summary", "other_thought_experiments",
                          "historical_examples", "common_themes", "key_insights", "conclusion", "lessons_learned"],

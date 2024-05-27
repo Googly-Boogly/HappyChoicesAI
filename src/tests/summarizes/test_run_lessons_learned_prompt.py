@@ -74,7 +74,7 @@ class TestRunLessonsLearned(unittest.TestCase):
 
     def test_summary_of_selected_thought_experiment(self):
         template = lessons_learned_prompt()
-        self.assertEqual(template.template, """You are a world renowned AI ethicist. You have been tasked with generating lessons learned from the thought experiments.
+        self.assertEqual(template.template, """You are a world renowned AI utilitarian ethicist. You have been tasked with generating lessons learned from the thought experiments.
 
 Dilemma:
 {input_dilemma}

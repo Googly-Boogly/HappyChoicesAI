@@ -5,8 +5,8 @@
 We regularly update HappyChoicesAI to fix security vulnerabilities. Please ensure you are using the latest version.
 
 | Version | Supported          |
-| ------- | ------------------ |
-| 1.x     | :white_check_mark: |
+|---------| ------------------ |
+| 0.1     | ✔  |
 
 ## Reporting a Vulnerability
 

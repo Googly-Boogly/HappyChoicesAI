@@ -70,7 +70,7 @@ class TestRunCommonThemes(unittest.TestCase):
 
     def test_common_themes_prompt(self):
         template = common_themes_prompt()
-        self.assertEqual(template.template, """You are a world renowned AI ethicist. You have been tasked with identifying and describing common themes from all the thought experiments and any overarching trends or significant findinds.
+        self.assertEqual(template.template, """You are a world renowned AI utilitarian ethicist. You have been tasked with identifying and describing common themes from all the thought experiments and any overarching trends or significant findinds.
 
 Dilemma:
 {input_dilemma}
@@ -81,5 +81,5 @@ Thought Experiment that was chosen:
 Other Thought Experiments:
 {other_thought_experiments}
 
-You need to identify and describe common themes from all the thought experiments. Include any overarching trends or significant findinds.
+You need to identify and describe common themes from all the thought experiments. Include any overarching trends or significant findings.
 """)

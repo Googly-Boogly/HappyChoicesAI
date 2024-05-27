@@ -43,7 +43,6 @@ class CustomError(Exception):
         self.logger = create_logger_error(
             file_path=os.path.abspath(__file__),
             name_of_log_file="error_log",
-            config=config,
         )
 
         # Log the error upon initialization
