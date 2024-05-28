@@ -10,6 +10,9 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
+    env:
+      OPENAI_API_KEY: fake_key
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v3
