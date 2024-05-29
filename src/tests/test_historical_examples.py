@@ -12,9 +12,9 @@ from HappyChoicesAI.historical_examples import (
 
 class TestReasonAboutDilemma(unittest.TestCase):
 
-    @patch("HappyChoicesAI.historical_examples.llm")
+    @patch('HappyChoicesAI.historical_examples.FileState.get_instance')
     @patch("HappyChoicesAI.historical_examples.create_prompt_template")
-    def test_reason_about_dilemma_yes(self, mock_create_prompt_template, mock_llm):
+    def test_reason_about_dilemma_yes(self, mock_create_prompt_template, mock_get_instance):
         # Arrange
         mock_output = MagicMock()
         mock_output.content = "yes"
@@ -31,15 +31,19 @@ class TestReasonAboutDilemma(unittest.TestCase):
         state = StateManager.get_instance().state
         state.situation = input_dilemma
 
+        mock_file_state_instance = MagicMock()
+        mock_file_state_instance.llm = mock_chain
+        mock_get_instance.return_value = mock_file_state_instance
+
         # Act
         result = reason_about_dilemma(dilemma)
 
         # Assert
         self.assertTrue(result)
 
-    @patch("HappyChoicesAI.historical_examples.llm")
+    @patch('HappyChoicesAI.historical_examples.FileState.get_instance')
     @patch("HappyChoicesAI.historical_examples.create_prompt_template")
-    def test_reason_about_dilemma_no(self, mock_create_prompt_template, mock_llm):
+    def test_reason_about_dilemma_no(self, mock_create_prompt_template, mock_get_instance):
         # Arrange
         mock_output = MagicMock()
         mock_output.content = "no"
@@ -56,15 +60,20 @@ class TestReasonAboutDilemma(unittest.TestCase):
         state = StateManager.get_instance().state
         state.situation = input_dilemma
 
+        mock_file_state_instance = MagicMock()
+        mock_file_state_instance.llm = mock_chain
+        mock_get_instance.return_value = mock_file_state_instance
+
+
         # Act
         result = reason_about_dilemma(dilemma)
 
         # Assert
         self.assertFalse(result)
 
-    @patch("HappyChoicesAI.historical_examples.llm")
+    @patch('HappyChoicesAI.historical_examples.FileState.get_instance')
     @patch("HappyChoicesAI.historical_examples.create_prompt_template")
-    def test_reason_about_dilemma_invalid_response(self, mock_create_prompt_template, mock_llm):
+    def test_reason_about_dilemma_invalid_response(self, mock_create_prompt_template, mock_get_instance):
         # Arrange
         mock_output = MagicMock()
         mock_output.content = "maybe"
@@ -81,15 +90,19 @@ class TestReasonAboutDilemma(unittest.TestCase):
         state = StateManager.get_instance().state
         state.situation = input_dilemma
 
+        mock_file_state_instance = MagicMock()
+        mock_file_state_instance.llm = mock_chain
+        mock_get_instance.return_value = mock_file_state_instance
+
         # Act
         result = reason_about_dilemma(dilemma)
 
         # Assert
         self.assertFalse(result)
 
-    @patch("HappyChoicesAI.historical_examples.llm")
+    @patch('HappyChoicesAI.historical_examples.FileState.get_instance')
     @patch("HappyChoicesAI.historical_examples.create_prompt_template")
-    def test_reason_about_dilemma_edge_case(self, mock_create_prompt_template, mock_llm):
+    def test_reason_about_dilemma_edge_case(self, mock_create_prompt_template, mock_get_instance):
         # Arrange
         mock_output = MagicMock()
         mock_output.content = "unknown"
@@ -105,6 +118,10 @@ class TestReasonAboutDilemma(unittest.TestCase):
         )
         state = StateManager.get_instance().state
         state.situation = input_dilemma
+
+        mock_file_state_instance = MagicMock()
+        mock_file_state_instance.llm = mock_chain
+        mock_get_instance.return_value = mock_file_state_instance
 
         # Act
         result = reason_about_dilemma(dilemma)

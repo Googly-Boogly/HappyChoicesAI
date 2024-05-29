@@ -34,19 +34,25 @@ class TestPickBestAction(unittest.TestCase):
 
     @patch('HappyChoicesAI.pick_action.StateManager.get_instance')
     @patch('HappyChoicesAI.pick_action.ModelUsedAndThreadCount.get_instance')
-    @patch('HappyChoicesAI.pick_action.llm')
+    @patch('HappyChoicesAI.pick_action.FileState.get_instance')
     @patch('HappyChoicesAI.pick_action.get_argue_best_action_prompt')
     @patch('HappyChoicesAI.pick_action.get_decide_best_action_prompt')
     def test_id_assignment(self, mock_get_decide_best_action_prompt, mock_get_argue_best_action_prompt,
-                           mock_llm, mock_ModelUsedAndThreadCount, real_state_mock):
+                           mock_get_instance, mock_ModelUsedAndThreadCount, real_state_mock):
         real_state_mock.return_value = Mock(state=self.state)
         # Ensure IDs are correctly assigned
         state = StateManager.get_instance().state
         mock_ModelUsedAndThreadCount.return_value = Mock(state=self.random_state)
+
+        mock_file_state_instance = MagicMock()
+        # mock_file_state_instance.llm = mock_chain
+        mock_get_instance.return_value = mock_file_state_instance
+
         pick_best_action()
         for idx, te in enumerate(state.thought_experiments):
             self.assertEqual(te["id"], idx + 1)
 
+    @patch('HappyChoicesAI.pick_action.FileState.get_instance')
     @patch('HappyChoicesAI.pick_action.StateManager.get_instance')
     @patch('HappyChoicesAI.pick_action.ModelUsedAndThreadCount.get_instance')
     @patch('HappyChoicesAI.pick_action.get_decide_best_action_prompt')
@@ -54,7 +60,7 @@ class TestPickBestAction(unittest.TestCase):
     @patch('HappyChoicesAI.pick_action.retry_fail_json_output')
     def test_argument_creation(self, mock_retry_fail_json_output, mock_get_argue_best_action_prompt,
                                mock_get_decide_best_action_prompt, mock_ModelUsedAndThreadCount,
-                               real_state_mock):
+                               real_state_mock, mock_get_instance):
         # Mock the functions
         # mock_make_other_text.side_effect = lambda x: "Formatted text"
         real_state_mock.return_value = Mock(state=self.state)
@@ -65,7 +71,9 @@ class TestPickBestAction(unittest.TestCase):
             {"for": "For argument", "against": "Against argument"},  # Third call for arguments
             {"id": 1}  # Final call for deciding the best action
         ]
-
+        mock_file_state_instance = MagicMock()
+        # mock_file_state_instance.llm = mock_chain
+        mock_get_instance.return_value = mock_file_state_instance
         pick_best_action()
 
         for te in self.state.thought_experiments:
@@ -129,11 +137,11 @@ class TestPickBestAction(unittest.TestCase):
 
     @patch('HappyChoicesAI.pick_action.StateManager.get_instance')
     @patch('HappyChoicesAI.pick_action.ModelUsedAndThreadCount.get_instance')
-    @patch('HappyChoicesAI.pick_action.llm')
+    @patch('HappyChoicesAI.pick_action.FileState.get_instance')
     @patch('HappyChoicesAI.pick_action.get_decide_best_action_prompt')
     @patch('HappyChoicesAI.pick_action.get_argue_best_action_prompt')
     def test_malformed_json_output(self, mock_get_argue_best_action_prompt, mock_get_decide_best_action_prompt,
-                                   mock_llm, mock_ModelUsedAndThreadCount, real_state_mock):
+                                   mock_get_instance, mock_ModelUsedAndThreadCount, real_state_mock):
         real_state_mock.return_value = Mock(state=self.state)
         # Mock the LLM response with malformed JSON
         mock_output = MagicMock()
@@ -147,17 +155,21 @@ class TestPickBestAction(unittest.TestCase):
         for thought in state.thought_experiments:
             thought["for"] = "For argument"
             thought["against"] = "Against argument"
+        mock_file_state_instance = MagicMock()
+        mock_file_state_instance.llm = 'mock_chain'
+        mock_get_instance.return_value = mock_file_state_instance
+
         pick_best_action()
 
         self.assertIsNone(state.best_action)
 
+    @patch('HappyChoicesAI.pick_action.FileState.get_instance')
     @patch('HappyChoicesAI.pick_action.StateManager.get_instance')
     @patch('HappyChoicesAI.pick_action.ModelUsedAndThreadCount.get_instance')
-    @patch('HappyChoicesAI.pick_action.llm')
     @patch('HappyChoicesAI.pick_action.get_decide_best_action_prompt')
     @patch('HappyChoicesAI.pick_action.get_argue_best_action_prompt')
     def test_json_without_id_key(self, mock_get_argue_best_action_prompt, mock_get_decide_best_action_prompt,
-                                 mock_llm, mock_ModelUsedAndThreadCount, real_state_mock):
+                                mock_ModelUsedAndThreadCount, real_state_mock, mock_get_instance):
         real_state_mock.return_value = Mock(state=self.state)
         # Mock the LLM response without ID key
         mock_output = MagicMock()
@@ -168,6 +180,9 @@ class TestPickBestAction(unittest.TestCase):
         mock_get_decide_best_action_prompt.return_value.__or__.return_value = mock_chain
 
         state = StateManager.get_instance().state
+        mock_file_state_instance = MagicMock()
+        mock_file_state_instance.llm = 'mock_chain'
+        mock_get_instance.return_value = mock_file_state_instance
         pick_best_action()
 
         self.assertIsNone(state.best_action)
@@ -210,46 +225,46 @@ class TestPickBestAction(unittest.TestCase):
     #     self.assertEqual(result, {"against": "Argument against", "for": "Argument for"})
 
 #    # Need to get this working eventually but I need to release
-    # @patch('HappyChoicesAI.pick_action.StateManager.get_instance')
-    # @patch('HappyChoicesAI.pick_action.ModelUsedAndThreadCount.get_instance')
-    # @patch("HappyChoicesAI.pick_action.get_decide_best_action_prompt")
-    # @patch("HappyChoicesAI.pick_action.llm")
-    # def test_decide_what_the_best_action_to_take_is(self, mock_llm, mock_get_decide_best_action_prompt,
-    #                                                 mock_ModelUsedAndThreadCount, mock_get_instance):
-    #     # Arrange
-    #     mock_output = {"id": 1, "reasoning": "Best reasoning"}
-    #     self.state.thought_experiments = [
-    #         {
-    #             "id": 1,
-    #             "proposed_action": "Proposed Action 1",
-    #             "parallels": "Parallels 1",
-    #             "criteria_changes": "Criteria Changes 1",
-    #             "percentage_changes": "Percentage Changes 1",
-    #             "proxies_impact": "Proxies Impact 1",
-    #             "quantified_proxies": "Quantified Proxies 1",
-    #             "summary": "Summary 1",
-    #             "arguments_for": "Arguments For 1",
-    #             "arguments_against": "Arguments Against 1",
-    #         }
-    #     ]
-    #     mock_get_instance.return_value = Mock(state=self.state)
-    #     mock_ModelUsedAndThreadCount.return_value = Mock(state=self.random_state)
-    #
-    #     # Mock the chain object and its invoke method
-    #     mock_chain = Mock()
-    #     mock_chain.invoke.return_value = mock_output
-    #
-    #     # Mock the prompt template to return our mock chain
-    #     mock_prompt_template = MagicMock()
-    #     mock_prompt_template.__or__.return_value = mock_chain
-    #     mock_get_decide_best_action_prompt.return_value = mock_prompt_template
-    #
-    #     # Act
-    #     result = decide_what_the_best_action_to_take_is()
-    #
-    #     # Assert
-    #     self.assertEqual(result, {"id": 1, "reasoning": "Best reasoning"})
-
+#     @patch('HappyChoicesAI.pick_action.StateManager.get_instance')
+#     @patch('HappyChoicesAI.pick_action.ModelUsedAndThreadCount.get_instance')
+#     @patch("HappyChoicesAI.pick_action.get_decide_best_action_prompt")
+#     @patch("HappyChoicesAI.pick_action.llm")
+#     def test_decide_what_the_best_action_to_take_is(self, mock_llm, mock_get_decide_best_action_prompt,
+#                                                     mock_ModelUsedAndThreadCount, mock_get_instance):
+#         # Arrange
+#         self.state.thought_experiments = [
+#             {
+#                 "id": 1,
+#                 "proposed_action": "Proposed Action 1",
+#                 "parallels": "Parallels 1",
+#                 "criteria_changes": "Criteria Changes 1",
+#                 "percentage_changes": "Percentage Changes 1",
+#                 "proxies_impact": "Proxies Impact 1",
+#                 "quantified_proxies": "Quantified Proxies 1",
+#                 "summary": "Summary 1",
+#                 "arguments_for": "Arguments For 1",
+#                 "arguments_against": "Arguments Against 1",
+#             }
+#         ]
+#         mock_get_instance.return_value = Mock(state=self.state)
+#         mock_ModelUsedAndThreadCount.return_value = Mock(state=self.random_state)
+#
+#         mock_output = '{"id": 1, "reasoning": "Best reasoning"}'
+#
+#         mock_chain = MagicMock()
+#         mock_chain.invoke.return_value = mock_output
+#
+#         mock_prompt_template = MagicMock()
+#         mock_prompt_template.__or__.return_value = mock_chain
+#         mock_get_decide_best_action_prompt.return_value = mock_prompt_template
+#
+#         # Act
+#         result = decide_what_the_best_action_to_take_is()
+#
+#         # Assert
+#         self.assertEqual(result, {"id": 1, "reasoning": "Best reasoning"})
 
 if __name__ == '__main__':
     unittest.main()
+
+# Hello are you there

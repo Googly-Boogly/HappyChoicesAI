@@ -1,6 +1,7 @@
 import os
 from typing import Dict, List, Optional
 
+from dotenv import load_dotenv
 from langchain_core.prompts import PromptTemplate
 from langchain_openai import ChatOpenAI
 
@@ -8,16 +9,30 @@ from HappyChoicesAI.ai_state import ModelUsedAndThreadCount, StateManager, State
 from global_code.helpful_functions import create_logger_error, log_it_sync
 from global_code.langchain import invoke_with_retry
 
-"""
-TODO: Implement the summarize_results function that will summarize the results of the ethical dilemma. (Should be supa ezpz)
-"""
-api_key = os.getenv("OPENAI_API_KEY")
-model_to_use = ModelUsedAndThreadCount.get_instance().state.model_used
-thread_count = ModelUsedAndThreadCount.get_instance().state.thread_count
-llm = ChatOpenAI(model=model_to_use, temperature=0, api_key=api_key)
-logger = create_logger_error(
-    file_path=os.path.abspath(__file__), name_of_log_file="summarize_result"
-)
+
+class FileState:
+    _instance = None
+
+    @staticmethod
+    def get_instance():
+        if FileState._instance is None:
+            FileState()
+        return FileState._instance
+
+    def __init__(self):
+        if FileState._instance is not None:
+            raise Exception("This class is a singleton!")
+        else:
+            load_dotenv()
+            self.logger = create_logger_error(
+                file_path=os.path.abspath(__file__), name_of_log_file="summarize_result.py"
+            )
+            self.api_key = os.getenv("OPENAI_API_KEY")
+            random_state = ModelUsedAndThreadCount.get_instance()
+            self.thread_count = random_state.state.thread_count
+            self.model_to_use = random_state.state.model_used
+            self.llm = ChatOpenAI(model=self.model_to_use, temperature=0, api_key=self.api_key)
+            FileState._instance = self
 
 
 def summarize_results(markdown: bool = False) -> Optional[Dict[str, str]]:
@@ -27,17 +42,18 @@ def summarize_results(markdown: bool = False) -> Optional[Dict[str, str]]:
     :param markdown: If the results should be in markdown format
     """
     state = StateManager.get_instance().state
+    file_state = FileState.get_instance()
     run_introduction_prompt()
     best_thought_experiment: Optional[Dict[str, str or int]] = None
     other_thought_experiments: List[Dict[str, str or int]] = []
     for thought in state.thought_experiments:
         if thought["id"] == state.best_action:
             best_thought_experiment = thought
-            log_it_sync(logger, custom_message=f"found best thought experiment: {True}",
+            log_it_sync(file_state.logger, custom_message=f"found best thought experiment: {True}",
                         log_level="info")
         else:
             other_thought_experiments.append(thought)
-    log_it_sync(logger, custom_message=f"Best Thought Experiment: {best_thought_experiment}", log_level="debug")
+    log_it_sync(file_state.logger, custom_message=f"Best Thought Experiment: {best_thought_experiment}", log_level="debug")
 
     run_summary_of_selected_thought_experiment(best_thought_experiment)
     for other_thought in other_thought_experiments:
@@ -71,9 +87,9 @@ def run_introduction_prompt() -> str:
     :return: NA
     """
     state = StateManager.get_instance().state
-
+    file_state = FileState.get_instance()
     prompt_template = introduction_prompt_gen()
-    chain = prompt_template | llm
+    chain = prompt_template | file_state.llm
     pretty_thought_experiments = make_thought_experiments_pretty_for_introduction()
     input_data = {
         "input_dilemma": state.situation,
@@ -81,10 +97,10 @@ def run_introduction_prompt() -> str:
     }
     output = invoke_with_retry(chain, input_data=input_data)
 
-    log_it_sync(logger, custom_message=f"run_introduction_prompt: {output}", log_level="debug")
+    log_it_sync(file_state.logger, custom_message=f"run_introduction_prompt: {output}", log_level="debug")
     summary_state = StateManagerSummary.get_instance().state
     summary_state.introduction = output
-    log_it_sync(logger, custom_message=f"ran intro prompt success?: {False if output == '' or not output else True}",
+    log_it_sync(file_state.logger, custom_message=f"ran intro prompt success?: {False if output == '' or not output else True}",
                 log_level="info")
     return output
 
@@ -98,9 +114,9 @@ def run_summary_of_selected_thought_experiment(thought_experiment_dict: Dict[str
     :return: NA
     """
     state = StateManager.get_instance().state
-
+    file_state = FileState.get_instance()
     prompt_template = summary_of_selected_thought_experiment()
-    chain = prompt_template | llm
+    chain = prompt_template | file_state.llm
     input_data = {
         "input_dilemma": state.situation,
         "thought_experiment_summary": thought_experiment_dict["summary"],
@@ -115,10 +131,10 @@ def run_summary_of_selected_thought_experiment(thought_experiment_dict: Dict[str
     }
     output = invoke_with_retry(chain, input_data=input_data)
 
-    log_it_sync(logger, custom_message=f"run_summary_of_selected_thought_experiment: {output}", log_level="debug")
+    log_it_sync(file_state.logger, custom_message=f"run_summary_of_selected_thought_experiment: {output}", log_level="debug")
     summary_state = StateManagerSummary.get_instance().state
     summary_state.chosen_best_action_summary = output
-    log_it_sync(logger, custom_message=f"ran summary of chosen thought experiment?: {False if output == '' or not output else True}",
+    log_it_sync(file_state.logger, custom_message=f"ran summary of chosen thought experiment?: {False if output == '' or not output else True}",
                 log_level="info")
     return output
 
@@ -132,9 +148,9 @@ def run_summary_of_other_thought_experiment(thought_experiment_dict: Dict[str, s
     :return: NA
     """
     state = StateManager.get_instance().state
-
+    file_state = FileState.get_instance()
     prompt_template = summary_of_other_thought_experiment()
-    chain = prompt_template | llm
+    chain = prompt_template | file_state.llm
     input_data = {
         "input_dilemma": state.situation,
         "thought_experiment_summary": thought_experiment_dict["summary"],
@@ -149,10 +165,10 @@ def run_summary_of_other_thought_experiment(thought_experiment_dict: Dict[str, s
     }
     output = invoke_with_retry(chain, input_data=input_data)
 
-    log_it_sync(logger, custom_message=f"run_summary_of_other_thought_experiment: {output}", log_level="debug")
+    log_it_sync(file_state.logger, custom_message=f"run_summary_of_other_thought_experiment: {output}", log_level="debug")
     summary_state = StateManagerSummary.get_instance().state
     summary_state.other_thought_experiments_summary.append(output)
-    log_it_sync(logger, custom_message=f"ran summary of other thought experiment?: {False if output == '' or not output else True}",
+    log_it_sync(file_state.logger, custom_message=f"ran summary of other thought experiment?: {False if output == '' or not output else True}",
                 log_level="info")
     return output
 
@@ -164,9 +180,9 @@ def run_common_themes_prompt() -> str:
     :return: NA
     """
     state = StateManager.get_instance().state
-
+    file_state = FileState.get_instance()
     prompt_template = common_themes_prompt()
-    chain = prompt_template | llm
+    chain = prompt_template | file_state.llm
     pretty_thought_experiments = make_other_thought_experiments_pretty_normal()
     chosen_thought_experiment_pretty = make_chosen_thought_experiment_pretty_text()
     input_data = {
@@ -176,10 +192,10 @@ def run_common_themes_prompt() -> str:
     }
     output = invoke_with_retry(chain, input_data=input_data)
 
-    log_it_sync(logger, custom_message=f"run_common_themes_prompt: {output}", log_level="debug")
+    log_it_sync(file_state.logger, custom_message=f"run_common_themes_prompt: {output}", log_level="debug")
     summary_state = StateManagerSummary.get_instance().state
     summary_state.themes = output
-    log_it_sync(logger, custom_message=f"ran common themes prompt success?: {False if output == '' or not output else True}",
+    log_it_sync(file_state.logger, custom_message=f"ran common themes prompt success?: {False if output == '' or not output else True}",
                 log_level="info")
     return output
 
@@ -192,9 +208,9 @@ def run_historical_examples_prompt_summary_prompt() -> str:
     :return: NA
     """
     state = StateManager.get_instance().state
-
+    file_state = FileState.get_instance()
     prompt_template = historical_examples_prompt_summary_prompt()
-    chain = prompt_template | llm
+    chain = prompt_template | file_state.llm
     pretty_thought_experiments_other = make_other_thought_experiments_pretty_normal()
     pretty_thought_experiments_chosen = make_chosen_thought_experiment_pretty_text()
     historical_examples_pretty = make_historical_examples_used_pretty_text()
@@ -206,10 +222,10 @@ def run_historical_examples_prompt_summary_prompt() -> str:
     }
     output = invoke_with_retry(chain, input_data=input_data)
 
-    log_it_sync(logger, custom_message=f"run_introduction_prompt: {output}", log_level="debug")
+    log_it_sync(file_state.logger, custom_message=f"run_introduction_prompt: {output}", log_level="debug")
     summary_state = StateManagerSummary.get_instance().state
     summary_state.historical_examples_summary = output
-    log_it_sync(logger, custom_message=f"ran historic example prompt success?: {False if output == '' or not output else True}",
+    log_it_sync(file_state.logger, custom_message=f"ran historic example prompt success?: {False if output == '' or not output else True}",
                 log_level="info")
     return output
 
@@ -220,10 +236,11 @@ def run_insights_gleamed_from_thought_experiments() -> str:
     ["input_dilemma", "thought_experiment_summary", "other_thought_experiments", "historical_examples", "common_themes"],
     :return: NA
     """
+    file_state = FileState.get_instance()
     state = StateManager.get_instance().state
     summary_state = StateManagerSummary.get_instance().state
     prompt_template = insights_gleamed_from_thought_experiments()
-    chain = prompt_template | llm
+    chain = prompt_template | file_state.llm
     pretty_thought_experiments_other = make_other_thought_experiments_pretty_normal()
     pretty_thought_experiments_chosen = make_chosen_thought_experiment_pretty_text()
     input_data = {
@@ -235,10 +252,10 @@ def run_insights_gleamed_from_thought_experiments() -> str:
     }
     output = invoke_with_retry(chain, input_data=input_data)
 
-    log_it_sync(logger, custom_message=f"run_introduction_prompt: {output}", log_level="debug")
+    log_it_sync(file_state.logger, custom_message=f"run_introduction_prompt: {output}", log_level="debug")
     summary_state = StateManagerSummary.get_instance().state
     summary_state.insights = output
-    log_it_sync(logger, custom_message=f"ran insights prompt success?: {False if output == '' or not output else True}",
+    log_it_sync(file_state.logger, custom_message=f"ran insights prompt success?: {False if output == '' or not output else True}",
                 log_level="info")
     return output
 
@@ -250,10 +267,11 @@ def run_conclusion_summary() -> str:
                          "historical_examples", "common_themes", "key_insights"]
     :return: NA
     """
+    file_state = FileState.get_instance()
     state = StateManager.get_instance().state
     summary_state = StateManagerSummary.get_instance().state
     prompt_template = conclusion_summary()
-    chain = prompt_template | llm
+    chain = prompt_template | file_state.llm
     pretty_thought_experiments = make_thought_experiments_pretty_for_introduction()
     pretty_thought_experiments_other = make_other_thought_experiments_pretty_normal()
     input_data = {
@@ -267,10 +285,10 @@ def run_conclusion_summary() -> str:
     }
     output = invoke_with_retry(chain, input_data=input_data)
 
-    log_it_sync(logger, custom_message=f"run_introduction_prompt: {output}", log_level="debug")
+    log_it_sync(file_state.logger, custom_message=f"run_introduction_prompt: {output}", log_level="debug")
     summary_state = StateManagerSummary.get_instance().state
     summary_state.conclusion = output
-    log_it_sync(logger, custom_message=f"ran conclusion prompt success?: {False if output == '' or not output else True}",
+    log_it_sync(file_state.logger, custom_message=f"ran conclusion prompt success?: {False if output == '' or not output else True}",
                 log_level="info")
     return output
 
@@ -282,10 +300,11 @@ def run_lessons_learned_prompt() -> str:
                          "historical_examples", "common_themes", "key_insights", "conclusion"],
     :return: NA
     """
+    file_state = FileState.get_instance()
     state = StateManager.get_instance().state
     summary_state = StateManagerSummary.get_instance().state
     prompt_template = lessons_learned_prompt()
-    chain = prompt_template | llm
+    chain = prompt_template | file_state.llm
     pretty_thought_experiments_other = make_other_thought_experiments_pretty_normal()
     pretty_thought_experiments_chosen = make_chosen_thought_experiment_pretty_text()
     input_data = {
@@ -299,10 +318,10 @@ def run_lessons_learned_prompt() -> str:
     }
     output = invoke_with_retry(chain, input_data=input_data)
 
-    log_it_sync(logger, custom_message=f"run_introduction_prompt: {output}", log_level="debug")
+    log_it_sync(file_state.logger, custom_message=f"run_introduction_prompt: {output}", log_level="debug")
 
     summary_state.lessons_learned = output
-    log_it_sync(logger, custom_message=f"ran lessons learned prompt success?: {False if output == '' or not output else True}",
+    log_it_sync(file_state.logger, custom_message=f"ran lessons learned prompt success?: {False if output == '' or not output else True}",
                 log_level="info")
     return output
 
@@ -314,10 +333,11 @@ def run_create_markdown_format_for_all() -> str:
                          "historical_examples", "common_themes", "key_insights", "conclusion", "lessons_learned"],
     :return: NA
     """
+    file_state = FileState.get_instance()
     state = StateManager.get_instance().state
     summary_state = StateManagerSummary.get_instance().state
     prompt_template = create_markdown_format_for_all()
-    chain = prompt_template | llm
+    chain = prompt_template | file_state.llm
     pretty_thought_experiments_other = make_other_thought_experiments_pretty_normal()
     pretty_thought_experiments_chosen = make_chosen_thought_experiment_pretty_text()
     input_data = {
@@ -332,10 +352,10 @@ def run_create_markdown_format_for_all() -> str:
     }
     output = invoke_with_retry(chain, input_data=input_data)
 
-    log_it_sync(logger, custom_message=f"run_introduction_prompt: {output}", log_level="debug")
+    log_it_sync(file_state.logger, custom_message=f"run_introduction_prompt: {output}", log_level="debug")
 
     summary_state.markdown = output
-    log_it_sync(logger, custom_message=f"ran markdown prompt success?: {False if output == '' or not output else True}",
+    log_it_sync(file_state.logger, custom_message=f"ran markdown prompt success?: {False if output == '' or not output else True}",
                 log_level="info")
     return output
 

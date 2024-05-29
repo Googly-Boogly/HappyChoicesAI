@@ -13,20 +13,30 @@ from HappyChoicesAI.ai_state import EthicistAIState, ModelUsedAndThreadCount, St
 
 from global_code.helpful_functions import create_logger_error, log_it_sync
 
-load_dotenv()
 
-# Get the API key from the environment variable
-api_key = os.getenv("OPENAI_API_KEY")
-model_to_use = ModelUsedAndThreadCount.get_instance().state.model_used
-thread_count = ModelUsedAndThreadCount.get_instance().state.thread_count
-llm = ChatOpenAI(model=model_to_use, temperature=0, api_key=api_key)
-logger = create_logger_error(
-    file_path=os.path.abspath(__file__), name_of_log_file="perform_thought_experiment"
-)
-"""
-TODO: Implement the actual agent now The perform_thought_experiment_chain is done (not tested)
-The agent will need to come up with X number of thought experiments
-"""
+class FileState:
+    _instance = None
+
+    @staticmethod
+    def get_instance():
+        if FileState._instance is None:
+            FileState()
+        return FileState._instance
+
+    def __init__(self):
+        if FileState._instance is not None:
+            raise Exception("This class is a singleton!")
+        else:
+            load_dotenv()
+            self.logger = create_logger_error(
+                file_path=os.path.abspath(__file__), name_of_log_file="perform_thought_experiment.py"
+            )
+            self.api_key = os.getenv("OPENAI_API_KEY")
+            random_state = ModelUsedAndThreadCount.get_instance()
+            self.thread_count = random_state.state.thread_count
+            self.model_to_use = random_state.state.model_used
+            self.llm = ChatOpenAI(model=self.model_to_use, temperature=0, api_key=self.api_key)
+            FileState._instance = self
 
 
 def perform_thought_experiments() -> None:
@@ -34,7 +44,7 @@ def perform_thought_experiments() -> None:
     This will be an agent that will take in the pain points, reasons, and actions of a dilemma and return the best action
     The agent will go through multiple thought experiments to determine the best course of action
     """
-
+    file_state = FileState.get_instance()
     proposed_actions = propose_all_actions()
 
     threads = []
@@ -48,7 +58,7 @@ def perform_thought_experiments() -> None:
         thread.join()
 
     state = StateManager.get_instance().state
-    log_it_sync(logger, custom_message=f"all TEs: {state.thought_experiments}", log_level="debug")
+    log_it_sync(file_state.logger, custom_message=f"all TEs: {state.thought_experiments}", log_level="debug")
 
 
 class Actions(BaseModel):
@@ -79,19 +89,20 @@ def propose_all_actions() -> list:
     This function will use an LLM to propose all of the hypothetical actions that could be taken in a given situation.
     :return: List of proposed actions
     """
+    file_state = FileState.get_instance()
     state = StateManager.get_instance().state
     prompt_template = create_prompt_template_propose_actions()
-    chain = prompt_template | llm
+    chain = prompt_template | file_state.llm
     output = chain.invoke({"dilemma": state.situation})
-    log_it_sync(logger, custom_message=f"Output: {output}", log_level="debug")
+    log_it_sync(file_state.logger, custom_message=f"Output: {output}", log_level="debug")
 
     try:
         parsed_output = json.loads(output.content)
-        log_it_sync(logger, custom_message=f"num of proposed actions: {len(list(parsed_output['actions']))}",
+        log_it_sync(file_state.logger, custom_message=f"num of proposed actions: {len(list(parsed_output['actions']))}",
                     log_level="info")
         return list(parsed_output["actions"])
     except (json.JSONDecodeError, KeyError) as e:
-        log_it_sync(logger, custom_message=f"Error: {e}", log_level="error")
+        log_it_sync(file_state.logger, custom_message=f"Error: {e}", log_level="error")
         return []
 
 
@@ -149,9 +160,10 @@ def perform_thought_experiment_chain(
 
 
 def analyze_parallels(state: EthicistAIState, proposed_action: str) -> str:
+    file_state = FileState.get_instance()
     prompt_template = get_analyze_parallels_prompt()
 
-    chain = prompt_template | llm
+    chain = prompt_template | file_state.llm
     output = chain.invoke(
         {
             "input_dilemma": state.situation,
@@ -160,16 +172,17 @@ def analyze_parallels(state: EthicistAIState, proposed_action: str) -> str:
         }
     )
     criteria = output.content
-    log_it_sync(logger, custom_message=f"analyze_parallels: {criteria}", log_level="debug")
-    log_it_sync(logger, custom_message=f"did it analyze_parallels: {True if output != '' else False}",
+    log_it_sync(file_state.logger, custom_message=f"analyze_parallels: {criteria}", log_level="debug")
+    log_it_sync(file_state.logger, custom_message=f"did it analyze_parallels: {True if output != '' else False}",
                 log_level="info")
     return criteria
 
 
 def analyze_criteria_changes(state: EthicistAIState, proposed_action: str) -> str:
+    file_state = FileState.get_instance()
     prompt_template = get_analyze_criteria_changes_prompt()
 
-    chain = prompt_template | llm
+    chain = prompt_template | file_state.llm
     output = chain.invoke(
         {
             "input_dilemma": state.situation,
@@ -178,16 +191,17 @@ def analyze_criteria_changes(state: EthicistAIState, proposed_action: str) -> st
         }
     )
     criteria = output.content
-    log_it_sync(logger, custom_message=f"analyze_criteria_changes: {criteria}", log_level="debug")
-    log_it_sync(logger, custom_message=f"did it analyze_criteria_changes: {True if output != '' else False}",
+    log_it_sync(file_state.logger, custom_message=f"analyze_criteria_changes: {criteria}", log_level="debug")
+    log_it_sync(file_state.logger, custom_message=f"did it analyze_criteria_changes: {True if output != '' else False}",
                 log_level="info")
     return criteria
 
 
 def analyze_percentage_changes(state: EthicistAIState, proposed_action: str, criteria_changes: str) -> str:
+    file_state = FileState.get_instance()
     prompt_template = get_analyze_percentage_changes_prompt()
 
-    chain = prompt_template | llm
+    chain = prompt_template | file_state.llm
     output = chain.invoke(
         {
             "input_dilemma": state.situation,
@@ -197,16 +211,17 @@ def analyze_percentage_changes(state: EthicistAIState, proposed_action: str, cri
         }
     )
     criteria = output.content
-    log_it_sync(logger, custom_message=f"analyze_percentage_changes: {criteria}", log_level="debug")
-    log_it_sync(logger, custom_message=f"did it analyze_percentage_changes: {True if output != '' else False}",
+    log_it_sync(file_state.logger, custom_message=f"analyze_percentage_changes: {criteria}", log_level="debug")
+    log_it_sync(file_state.logger, custom_message=f"did it analyze_percentage_changes: {True if output != '' else False}",
                 log_level="info")
     return criteria
 
 
 def analyze_proxies_impact(state: EthicistAIState, proposed_action: str, criteria_changes: str) -> str:
+    file_state = FileState.get_instance()
     prompt_template = get_analyze_proxies_impact_prompt()
 
-    chain = prompt_template | llm
+    chain = prompt_template | file_state.llm
     output = chain.invoke(
         {
             "input_dilemma": state.situation,
@@ -216,16 +231,17 @@ def analyze_proxies_impact(state: EthicistAIState, proposed_action: str, criteri
         }
     )
     criteria = output.content
-    log_it_sync(logger, custom_message=f"analyze_proxies_impact: {criteria}", log_level="debug")
-    log_it_sync(logger, custom_message=f"did it analyze_proxies_impact: {True if output != '' else False}",
+    log_it_sync(file_state.logger, custom_message=f"analyze_proxies_impact: {criteria}", log_level="debug")
+    log_it_sync(file_state.logger, custom_message=f"did it analyze_proxies_impact: {True if output != '' else False}",
                 log_level="info")
     return criteria
 
 
 def quantify_proxies(state: EthicistAIState, proposed_action: str, proxies_impact: str) -> str:
+    file_state = FileState.get_instance()
     prompt_template = get_quantify_proxies_prompt()
 
-    chain = prompt_template | llm
+    chain = prompt_template | file_state.llm
     output = chain.invoke(
         {
             "input_dilemma": state.situation,
@@ -235,8 +251,8 @@ def quantify_proxies(state: EthicistAIState, proposed_action: str, proxies_impac
         }
     )
     criteria = output.content
-    log_it_sync(logger, custom_message=f"quantify_proxies: {criteria}", log_level="debug")
-    log_it_sync(logger, custom_message=f"did it quantify_proxies: {True if output != '' else False}", log_level="info")
+    log_it_sync(file_state.logger, custom_message=f"quantify_proxies: {criteria}", log_level="debug")
+    log_it_sync(file_state.logger, custom_message=f"did it quantify_proxies: {True if output != '' else False}", log_level="info")
     return criteria
 
 
@@ -250,8 +266,9 @@ def summarize_thought_experiment(
         state: EthicistAIState,
 ) -> str:
     prompt_template = get_summarize_thought_experiment_prompt()
+    file_state = FileState.get_instance()
 
-    chain = prompt_template | llm
+    chain = prompt_template | file_state.llm
     output = chain.invoke(
         {
             "input_dilemma": state.situation,
@@ -265,9 +282,9 @@ def summarize_thought_experiment(
         }
     )
     criteria = output.content
-    log_it_sync(logger, custom_message=f"summarize_thought_experiment: {criteria}", log_level="debug")
+    log_it_sync(file_state.logger, custom_message=f"summarize_thought_experiment: {criteria}", log_level="debug")
 
-    log_it_sync(logger, custom_message=f"did it summarize: {True if output != '' else False}", log_level="info")
+    log_it_sync(file_state.logger, custom_message=f"did it summarize: {True if output != '' else False}", log_level="info")
     return criteria
 
 

@@ -1,7 +1,7 @@
 import json
 import os
 import threading
-from typing import Dict, List, Tuple
+from typing import Any, Dict, List, Tuple
 import multiprocessing
 
 from dotenv import load_dotenv
@@ -13,21 +13,30 @@ from HappyChoicesAI.ai_state import EthicistAIState, ModelUsedAndThreadCount, St
 from global_code.langchain import invoke_with_retry, retry_fail_json_output
 from global_code.helpful_functions import create_logger_error, log_it_sync
 
-load_dotenv()
 
-# Get the API key from the environment variable
-api_key = os.getenv("OPENAI_API_KEY")
-random_state = ModelUsedAndThreadCount.get_instance()
-thread_count = random_state.state.thread_count
-model_to_use = random_state.state.model_used
+class FileState:
+    _instance = None
 
-llm = ChatOpenAI(model=model_to_use, temperature=0, api_key=api_key)
-logger = create_logger_error(
-    file_path=os.path.abspath(__file__), name_of_log_file="pick_action"
-)
-"""
+    @staticmethod
+    def get_instance():
+        if FileState._instance is None:
+            FileState()
+        return FileState._instance
 
-"""
+    def __init__(self):
+        if FileState._instance is not None:
+            raise Exception("This class is a singleton!")
+        else:
+            load_dotenv()
+            self.logger = create_logger_error(
+                file_path=os.path.abspath(__file__), name_of_log_file="pick_action.py"
+            )
+            self.api_key = os.getenv("OPENAI_API_KEY")
+            random_state = ModelUsedAndThreadCount.get_instance()
+            self.thread_count = random_state.state.thread_count
+            self.model_to_use = random_state.state.model_used
+            self.llm = ChatOpenAI(model=self.model_to_use, temperature=0, api_key=self.api_key)
+            FileState._instance = self
 
 
 def pick_best_action() -> None:
@@ -44,7 +53,7 @@ def pick_best_action() -> None:
 
     # first add id's to all of the thought experiments
     state = StateManager.get_instance().state
-
+    file_state = FileState.get_instance()
     for i in range(len(state.thought_experiments)):
         state.thought_experiments[i]["id"] = i + 1
 
@@ -60,14 +69,14 @@ def pick_best_action() -> None:
     for thread in threads:
         thread.join()
 
-    log_it_sync(logger, custom_message=f"results: {state.thought_experiments}", log_level="debug")
+    log_it_sync(file_state.logger, custom_message=f"results: {state.thought_experiments}", log_level="debug")
     best_action: Dict[str, str] = retry_fail_json_output(decide_what_the_best_action_to_take_is)
 
     # check if key in dict
 
     if "id" in best_action:
         log_it_sync(
-            logger,
+            file_state.logger,
             custom_message=f"Picked best action: {True}",
             log_level="info"
         )
@@ -110,9 +119,10 @@ def argue_best_action(
     :return: The argument for why the thought experiment is the best action and why it is not
     """
     state = StateManager.get_instance().state
+    file_state = FileState.get_instance()
     prompt_template = get_argue_best_action_prompt()
     parser = JsonOutputParser()
-    chain = prompt_template | llm | parser
+    chain = prompt_template | file_state.llm | parser
 
     output = chain.invoke(
         {
@@ -122,23 +132,23 @@ def argue_best_action(
             "historical_examples": make_historical_examples_used_pretty_text(),
         }
     )
-    log_it_sync(logger, custom_message=f"type(chain): {type(output)}", log_level="debug")
+    log_it_sync(file_state.logger, custom_message=f"type(chain): {type(output)}", log_level="debug")
     if isinstance(output, dict):
         for_argument = output["for"]
         against_argument = output["against"]
         log_it_sync(
-            logger,
+            file_state.logger,
             custom_message=f"Arguments for the thought experiment: {for_argument}",
             log_level="debug"
         )
         log_it_sync(
-            logger,
+            file_state.logger,
             custom_message=f"Arguments against the thought experiment: {against_argument}",
             log_level="debug"
         )
-        log_it_sync(logger, custom_message=f"Arguments against the thought experiment: passed", log_level="info")
+        log_it_sync(file_state.logger, custom_message=f"Arguments against the thought experiment: passed", log_level="info")
         return {"for": for_argument, "against": against_argument}
-    log_it_sync(logger, custom_message=f"Arguments against the thought experiment: failed", log_level="info")
+    log_it_sync(file_state.logger, custom_message=f"Arguments against the thought experiment: failed", log_level="info")
     return {}
 
 
@@ -148,25 +158,27 @@ def decide_what_the_best_action_to_take_is() -> Dict[str, str]:
     action and summarize the results
     """
     state = StateManager.get_instance().state
+    file_state = FileState.get_instance()
     all_thought_experiments = make_all_thought_experiment_pretty_text_with_arguments()
     prompt_template = get_decide_best_action_prompt()
     parser = JsonOutputParser()
-    chain = prompt_template | llm | parser
+    chain = prompt_template | file_state.llm | parser
     output = chain.invoke(
         {
             "all_thought_experiments": all_thought_experiments,
         }
     )
+    return process_output(output)
+
+
+def process_output(output: Any) -> Dict[str, str]:
+    file_state = FileState.get_instance()
     if isinstance(output, dict):
-        log_it_sync(logger, custom_message=f"decide_what_the_best_action_to_take_is: {output}",
-                    log_level="debug")
-        log_it_sync(logger, custom_message=f"decide_what_the_best_action_to_take_is: {True}",
-                    log_level="info")
+        log_it_sync(file_state.logger, custom_message=f"decide_what_the_best_action_to_take_is: {output}", log_level="debug")
+        log_it_sync(file_state.logger, custom_message=f"decide_what_the_best_action_to_take_is: {True}", log_level="info")
         return output
-    log_it_sync(logger, custom_message=f"decide_what_the_best_action_to_take_is Output: {output}",
-                log_level="info")
-    log_it_sync(logger, custom_message=f"decide_what_the_best_action_to_take_is: {False}",
-                log_level="info")
+    log_it_sync(file_state.logger, custom_message=f"decide_what_the_best_action_to_take_is Output: {output}", log_level="info")
+    log_it_sync(file_state.logger, custom_message=f"decide_what_the_best_action_to_take_is: {False}", log_level="info")
     return {}
 
 

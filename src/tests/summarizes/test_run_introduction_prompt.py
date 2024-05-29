@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, Mock, patch
 from HappyChoicesAI.summarize_result import create_markdown_format_for_all, \
     introduction_prompt_gen, run_create_markdown_format_for_all, run_introduction_prompt
 from global_code.langchain import invoke_with_retry
@@ -51,17 +51,21 @@ class TestRunIntro(unittest.TestCase):
         self.state.best_action = 1
 
     @patch('HappyChoicesAI.summarize_result.invoke_with_retry')
-    @patch('HappyChoicesAI.summarize_result.llm')
+    @patch('HappyChoicesAI.summarize_result.FileState.get_instance')
     @patch('HappyChoicesAI.summarize_result.StateManager.get_instance')
     @patch('HappyChoicesAI.summarize_result.StateManagerSummary.get_instance')
     @patch('HappyChoicesAI.summarize_result.make_thought_experiments_pretty_for_introduction')
-    def test_run_introduction_prompt(self, mock_invoke_with_retry, mock_llm, mock_get_instance,
+    def test_run_introduction_prompt(self, mock_invoke_with_retry, mock_get_instance2, mock_get_instance,
                                                         mock_get_instance_summary,
                                                         make_thought_experiments_pretty_for_introduction):
         mock_get_instance.return_value = Mock(state=self.state)
         mock_get_instance_summary.return_value = Mock(state=self.state_summary)
         mock_invoke_with_retry.return_value = "This is the generated summary."
         make_thought_experiments_pretty_for_introduction.return_value = "This is the generated summary."
+
+        mock_file_state_instance = MagicMock()
+        mock_file_state_instance.llm = Mock()
+        mock_get_instance2.return_value = mock_file_state_instance
 
         result = run_introduction_prompt()
 

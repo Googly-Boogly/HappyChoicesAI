@@ -9,16 +9,51 @@ from langchain_openai import ChatOpenAI
 from HappyChoicesAI.ai_state import Database, HistoricalExample, ModelUsedAndThreadCount, StateManager
 from global_code.helpful_functions import create_logger_error, log_it_sync
 
-load_dotenv()
-logger = create_logger_error(
-    file_path=os.path.abspath(__file__), name_of_log_file="historical_examples"
-)
-# Get the API key from the environment variable
-api_key = os.getenv("OPENAI_API_KEY")
-random_state = ModelUsedAndThreadCount.get_instance()
-thread_count = random_state.state.thread_count
-model_to_use = random_state.state.model_used
-llm = ChatOpenAI(model=model_to_use, temperature=0, api_key=api_key)
+
+class FileState:
+    _instance = None
+
+    @staticmethod
+    def get_instance():
+        if FileState._instance is None:
+            FileState()
+        return FileState._instance
+
+    def __init__(self):
+        if FileState._instance is not None:
+            raise Exception("This class is a singleton!")
+        else:
+            load_dotenv()
+            self.logger = create_logger_error(
+                file_path=os.path.abspath(__file__), name_of_log_file="historical_examples"
+            )
+            self.api_key = os.getenv("OPENAI_API_KEY")
+            random_state = ModelUsedAndThreadCount.get_instance()
+            self.thread_count = random_state.state.thread_count
+            self.model_to_use = random_state.state.model_used
+            self.llm = ChatOpenAI(model=self.model_to_use, temperature=0, api_key=self.api_key)
+            FileState._instance = self
+
+
+def setup_file():
+    load_dotenv()
+    logger = create_logger_error(
+        file_path=os.path.abspath(__file__), name_of_log_file="historical_examples"
+    )
+    # Get the API key from the environment variable
+    api_key = os.getenv("OPENAI_API_KEY")
+    random_state = ModelUsedAndThreadCount.get_instance()
+    thread_count = random_state.state.thread_count
+    model_to_use = random_state.state.model_used
+    llm = ChatOpenAI(model=model_to_use, temperature=0, api_key=api_key)
+    output = {
+        "random_state": random_state,
+        "thread_count": thread_count,
+        "model_to_use": model_to_use,
+        "llm": llm,
+        "logger": logger
+    }
+    return output
 
 """
 The code works, need to ensure LLM outputs are good. (not tested) (always test last it is the most boring) (plus yo boi is tired)
@@ -33,7 +68,7 @@ def find_historical_examples():
     :param state: The state object
     :return: NA
     """
-
+    file_state = FileState.get_instance()
     historical_dilemmas = get_historical_examples()
 
     threads = []
@@ -47,7 +82,8 @@ def find_historical_examples():
         thread.join()
 
     state = StateManager.get_instance().state
-    log_it_sync(logger, custom_message=f"historical examples check: {len(state.historical_examples)}", log_level="info")
+    log_it_sync(file_state.logger, custom_message=f"historical examples check: {len(state.historical_examples)}",
+                log_level="info")
 
 
 def reason_and_add_to_state(dilemma: HistoricalExample):
@@ -92,12 +128,13 @@ def reason_about_dilemma(dilemma: HistoricalExample) -> bool:
     :param dilemma: The historical dilemma
     :return: Either True or False (if the dilemmas are similar)
     """
+    file_state = FileState.get_instance()
     prompt_template = create_prompt_template()
     input_dilemma = StateManager.get_instance().state.situation
-    chain = prompt_template | llm
+    chain = prompt_template | file_state.llm
     output = chain.invoke({"situation": input_dilemma, "dilemma": dilemma.situation})
     log_it_sync(
-        logger, custom_message=f"Output from LLM: {output.content}", log_level="debug"
+        file_state.logger, custom_message=f"Output from LLM: {output.content}", log_level="debug"
     )
     response = output.content
     if response in ["yes", "yes.", "Yes", "Yes."]:

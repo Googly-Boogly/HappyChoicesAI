@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, Mock, patch
 from HappyChoicesAI.summarize_result import create_markdown_format_for_all, \
     lessons_learned_prompt, run_create_markdown_format_for_all, run_lessons_learned_prompt
 from global_code.langchain import invoke_with_retry
@@ -53,19 +53,23 @@ class TestRunLessonsLearned(unittest.TestCase):
 
     @patch('HappyChoicesAI.summarize_result.StateManagerSummary.get_instance')
     @patch('HappyChoicesAI.summarize_result.invoke_with_retry')
-    @patch('HappyChoicesAI.summarize_result.llm')
+    @patch('HappyChoicesAI.summarize_result.FileState.get_instance')
     @patch('HappyChoicesAI.summarize_result.StateManager.get_instance')
     @patch('HappyChoicesAI.summarize_result.make_other_thought_experiments_pretty_normal')
     @patch('HappyChoicesAI.summarize_result.make_chosen_thought_experiment_pretty_text')
     def test_run_lessons_learned_prompt(self, mock_make_chosen_thought_experiment_pretty_text,
                                         mock_make_other_thought_experiments_pretty_normal,
-                                        mock_get_instance, mock_llm,
+                                        mock_get_instance, mock_get_instance2,
                                         mock_invoke_with_retry, mock_get_instance_summary):
         mock_make_other_thought_experiments_pretty_normal.return_value = "Other Thought Experiments"
         mock_make_chosen_thought_experiment_pretty_text.return_value = "Chosen Thought Experiment"
         mock_get_instance.return_value = Mock(state=self.state)
         mock_get_instance_summary.return_value = Mock(state=self.state_summary)
         mock_invoke_with_retry.return_value = "This is the generated summary."
+
+        mock_file_state_instance = MagicMock()
+        mock_file_state_instance.llm = Mock()
+        mock_get_instance2.return_value = mock_file_state_instance
 
         result = run_lessons_learned_prompt()
 

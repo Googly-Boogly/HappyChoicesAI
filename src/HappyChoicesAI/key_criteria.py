@@ -6,14 +6,30 @@ import os
 from HappyChoicesAI.ai_state import ModelUsedAndThreadCount, StateManager
 from global_code.helpful_functions import log_it_sync, create_logger_error
 
-load_dotenv()
-logger = create_logger_error(
-    file_path=os.path.abspath(__file__), name_of_log_file="key_criteria"
-)
-# Get the API key from the environment variable
-api_key = os.getenv("OPENAI_API_KEY")
-model_to_use = ModelUsedAndThreadCount.get_instance().state.model_used
-llm = ChatOpenAI(model=model_to_use, temperature=0, api_key=api_key)
+class FileState:
+    _instance = None
+
+    @staticmethod
+    def get_instance():
+        if FileState._instance is None:
+            FileState()
+        return FileState._instance
+
+    def __init__(self):
+        if FileState._instance is not None:
+            raise Exception("This class is a singleton!")
+        else:
+            load_dotenv()
+            self.logger = create_logger_error(
+                file_path=os.path.abspath(__file__), name_of_log_file="key_criteria.py"
+            )
+            self.api_key = os.getenv("OPENAI_API_KEY")
+            random_state = ModelUsedAndThreadCount.get_instance()
+            self.thread_count = random_state.state.thread_count
+            self.model_to_use = random_state.state.model_used
+            self.llm = ChatOpenAI(model=self.model_to_use, temperature=0, api_key=self.api_key)
+            FileState._instance = self
+
 
 def create_prompt_template():
     return PromptTemplate(
@@ -41,11 +57,13 @@ def find_key_criteria():
     Analyzes the situation to identify key ethical criteria relevant to utilitarian ethics.
     Will save the criteria to the state object.
     """
+    file_state = FileState.get_instance()
     state = StateManager.get_instance().state
     prompt_template = create_prompt_template()
-    chain = prompt_template | llm
+    chain = prompt_template | file_state.llm
     output = chain.invoke({"dilemma": state.situation})
     criteria = output.content
-    log_it_sync(logger, custom_message=f"Criteria: {criteria}", log_level="debug")
+    log_it_sync(file_state.logger, custom_message=f"Criteria: {criteria}", log_level="debug")
     state.criteria = criteria
-    log_it_sync(logger, custom_message=f"find_key_criteria check: {True if output != '' else False}", log_level="info")
+    log_it_sync(file_state.logger, custom_message=f"find_key_criteria check: {True if output != '' else False}",
+                log_level="info")

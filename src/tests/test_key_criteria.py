@@ -11,9 +11,9 @@ from HappyChoicesAI.key_criteria import find_key_criteria
 
 class TestFindKeyCriteria(unittest.TestCase):
 
-    @patch("HappyChoicesAI.key_criteria.llm")
+    @patch('HappyChoicesAI.key_criteria.FileState.get_instance')
     @patch("HappyChoicesAI.key_criteria.create_prompt_template")
-    def test_find_key_criteria(self, mock_create_prompt_template, mock_llm):
+    def test_find_key_criteria(self, mock_create_prompt_template, mock_get_instance):
         # Create a mock response for chain.invoke
         mock_output = MagicMock()
         mock_output.content = "Preserving human autonomy, profits, the human managers, and the people being hired."
@@ -27,6 +27,10 @@ class TestFindKeyCriteria(unittest.TestCase):
 
         state = StateManager.get_instance().state
         state.situation = "A corporation introduces an AI system designed to manage task assignments and work schedules to optimize productivity and reduce managerial costs."
+
+        mock_file_state_instance = MagicMock()
+        mock_file_state_instance.llm = mock_chain
+        mock_get_instance.return_value = mock_file_state_instance
 
         # Call the function
         find_key_criteria()

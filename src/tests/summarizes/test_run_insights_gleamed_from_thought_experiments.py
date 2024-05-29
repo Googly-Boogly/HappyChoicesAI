@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, Mock, patch
 from HappyChoicesAI.summarize_result import create_markdown_format_for_all, \
     insights_gleamed_from_thought_experiments, run_create_markdown_format_for_all, \
     run_insights_gleamed_from_thought_experiments
@@ -53,13 +53,17 @@ class TestRunInsights(unittest.TestCase):
 
     @patch('HappyChoicesAI.summarize_result.StateManagerSummary.get_instance')
     @patch('HappyChoicesAI.summarize_result.StateManager.get_instance')
-    @patch('HappyChoicesAI.summarize_result.llm')
+    @patch('HappyChoicesAI.summarize_result.FileState.get_instance')
     @patch('HappyChoicesAI.summarize_result.invoke_with_retry')
-    def test_run_insights_gleamed_from_thought_experiments(self, mock_invoke_with_retry, mock_llm, mock_get_instance,
+    def test_run_insights_gleamed_from_thought_experiments(self, mock_invoke_with_retry, mock_get_instance2, mock_get_instance,
                                                         mock_get_instance_summary):
         mock_get_instance.return_value = Mock(state=self.state)
         mock_get_instance_summary.return_value = Mock(state=self.state_summary)
         mock_invoke_with_retry.return_value = "This is the generated summary."
+
+        mock_file_state_instance = MagicMock()
+        mock_file_state_instance.llm = Mock()
+        mock_get_instance2.return_value = mock_file_state_instance
 
         result = run_insights_gleamed_from_thought_experiments()
 
